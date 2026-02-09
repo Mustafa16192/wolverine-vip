@@ -1,11 +1,11 @@
 import 'react-native-gesture-handler';
 import React from 'react';
-import { View, ActivityIndicator, Platform, Text, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, Platform, StyleSheet } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { COLORS, TYPOGRAPHY, SPACING } from './constants/theme';
-import { Home, BarChart3, Newspaper, ShoppingBag, Ticket, Zap } from 'lucide-react-native';
+import { COLORS } from './constants/theme';
+import { Home, BarChart3, Newspaper, ShoppingBag, Ticket } from 'lucide-react-native';
 import { StatusBar } from 'expo-status-bar';
 import {
   useFonts,
@@ -18,11 +18,8 @@ import {
 } from '@expo-google-fonts/montserrat';
 
 // Context
-import { AppProvider, useApp } from './context/AppContext';
+import { AppProvider } from './context/AppContext';
 import { GameProvider } from './context/GameContext';
-
-// Screens - Launcher
-import LauncherScreen from './screens/LauncherScreen';
 
 // Non-Game Day Screens
 import DashboardScreen from './screens/DashboardScreen';
@@ -45,8 +42,7 @@ import PostgamePhase from './screens/gameday/PostgamePhase';
 import HomePhase from './screens/gameday/HomePhase';
 
 const Tab = createBottomTabNavigator();
-const Stack = createStackNavigator();
-const RootStack = createStackNavigator();
+const HomeStack = createStackNavigator();
 
 /**
  * Navigation Theme
@@ -66,10 +62,39 @@ const NavTheme = {
 };
 
 /**
- * Non-Game Day Tab Navigator
- * Bento-style dashboard experience
+ * Home Stack
+ * Keeps dashboard + game day journey in one continuous app experience.
  */
-function NonGameDayTabs() {
+function HomeNavigator() {
+  return (
+    <HomeStack.Navigator
+      screenOptions={{
+        headerShown: false,
+        cardStyle: { backgroundColor: COLORS.blue },
+        gestureEnabled: true,
+        animationEnabled: true,
+      }}
+    >
+      <HomeStack.Screen name="Dashboard" component={DashboardScreen} />
+      <HomeStack.Screen name="GameDayHome" component={GameDayHomeScreen} />
+      <HomeStack.Screen name="MorningPhase" component={MorningPhase} />
+      <HomeStack.Screen name="TailgatePhase" component={TailgatePhase} />
+      <HomeStack.Screen name="TravelPhase" component={TravelPhase} />
+      <HomeStack.Screen name="ParkingPhase" component={ParkingPhase} />
+      <HomeStack.Screen name="PregamePhase" component={PregamePhase} />
+      <HomeStack.Screen name="IngamePhase" component={IngamePhase} />
+      <HomeStack.Screen name="PostgamePhase" component={PostgamePhase} />
+      <HomeStack.Screen name="HomePhase" component={HomePhase} />
+      <HomeStack.Screen name="GameDayTicket" component={TicketScreen} />
+    </HomeStack.Navigator>
+  );
+}
+
+/**
+ * Main Tabs
+ * Single app shell; tab bar remains available across app states.
+ */
+function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
@@ -99,7 +124,7 @@ function NonGameDayTabs() {
     >
       <Tab.Screen
         name="Home"
-        component={DashboardScreen}
+        component={HomeNavigator}
         options={{
           tabBarIcon: ({ color, focused }) => (
             <Home color={color} size={24} strokeWidth={focused ? 2.5 : 2} />
@@ -152,43 +177,6 @@ function NonGameDayTabs() {
 }
 
 /**
- * Game Day Stack Navigator
- * Full end-to-end game day experience
- */
-function GameDayNavigator() {
-  return (
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: false,
-        cardStyle: { backgroundColor: COLORS.blue },
-        gestureEnabled: true,
-        animationEnabled: true,
-      }}
-    >
-      <Stack.Screen name="GameDayHome" component={GameDayHomeScreen} />
-      <Stack.Screen name="MorningPhase" component={MorningPhase} />
-      <Stack.Screen name="TailgatePhase" component={TailgatePhase} />
-      <Stack.Screen name="TravelPhase" component={TravelPhase} />
-      <Stack.Screen name="ParkingPhase" component={ParkingPhase} />
-      <Stack.Screen name="PregamePhase" component={PregamePhase} />
-      <Stack.Screen name="IngamePhase" component={IngamePhase} />
-      <Stack.Screen name="PostgamePhase" component={PostgamePhase} />
-      <Stack.Screen name="HomePhase" component={HomePhase} />
-      <Stack.Screen name="GameDayTicket" component={TicketScreen} />
-    </Stack.Navigator>
-  );
-}
-
-/**
- * Main App Navigator (The "Working" Prototype)
- * Switches between Game Day and Non-Game Day modes
- */
-function MainAppNavigator() {
-  const { isGameDay } = useApp();
-  return isGameDay ? <GameDayNavigator /> : <NonGameDayTabs />;
-}
-
-/**
  * Root App Component
  */
 export default function App() {
@@ -212,10 +200,7 @@ export default function App() {
       <GameProvider>
         <NavigationContainer theme={NavTheme}>
           <StatusBar style="light" />
-          <RootStack.Navigator screenOptions={{ headerShown: false }}>
-            <RootStack.Screen name="Launcher" component={LauncherScreen} />
-            <RootStack.Screen name="MainApp" component={MainAppNavigator} />
-          </RootStack.Navigator>
+          <MainTabs />
         </NavigationContainer>
       </GameProvider>
     </AppProvider>
