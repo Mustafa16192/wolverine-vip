@@ -4,7 +4,8 @@ import { View, ActivityIndicator, Platform, StyleSheet } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { COLORS } from './constants/theme';
+import { BlurView } from 'expo-blur';
+import { COLORS, CHROME } from './constants/theme';
 import { Home, BarChart3, Newspaper, ShoppingBag, Ticket } from 'lucide-react-native';
 import { StatusBar } from 'expo-status-bar';
 import {
@@ -26,6 +27,7 @@ import DashboardScreen from './screens/DashboardScreen';
 import StatsScreen from './screens/StatsScreen';
 import NewsScreen from './screens/NewsScreen';
 import ShopScreen from './screens/ShopScreen';
+import LiveOpsDetailScreen from './screens/LiveOpsDetailScreen';
 
 // Shared Screens
 import TicketScreen from './screens/TicketScreen';
@@ -76,6 +78,7 @@ function HomeNavigator() {
       }}
     >
       <HomeStack.Screen name="Dashboard" component={DashboardScreen} />
+      <HomeStack.Screen name="LiveOpsDetail" component={LiveOpsDetailScreen} />
       <HomeStack.Screen name="GameDayHome" component={GameDayHomeScreen} />
       <HomeStack.Screen name="MorningPhase" component={MorningPhase} />
       <HomeStack.Screen name="TailgatePhase" component={TailgatePhase} />
@@ -100,25 +103,33 @@ function MainTabs() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: COLORS.blue,
-          borderTopWidth: 2,
-          borderTopColor: COLORS.maize,
-          height: Platform.OS === 'ios' ? 85 : 65,
+          position: 'absolute',
+          left: 18,
+          right: 18,
+          bottom: Platform.OS === 'ios' ? 24 : 12,
+          borderTopWidth: 0,
+          borderWidth: 1,
+          borderColor: CHROME.dock.border,
+          borderRadius: 34,
+          backgroundColor: CHROME.dock.background,
+          height: Platform.OS === 'ios' ? 66 : 58,
           paddingTop: 8,
-          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+          paddingBottom: Platform.OS === 'ios' ? 14 : 8,
           elevation: 0,
-          shadowOpacity: 0,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 10 },
+          shadowOpacity: 0.22,
+          shadowRadius: 16,
+          overflow: 'hidden',
         },
+        tabBarBackground: () => (
+          <BlurView intensity={34} tint="dark" style={StyleSheet.absoluteFill} />
+        ),
         tabBarActiveTintColor: COLORS.maize,
-        tabBarInactiveTintColor: 'rgba(255,255,255,0.5)',
-        tabBarLabelStyle: {
-          fontFamily: 'Montserrat_700Bold',
-          fontSize: 9,
-          letterSpacing: 1,
-          marginTop: 2,
-        },
+        tabBarInactiveTintColor: 'rgba(255,255,255,0.58)',
+        tabBarShowLabel: false,
         tabBarIconStyle: {
-          marginTop: 2,
+          marginTop: 1,
         },
       }}
     >

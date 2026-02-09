@@ -21,6 +21,7 @@ import {
   ArrowLeft,
 } from 'lucide-react-native';
 import { useApp } from '../../context/AppContext';
+import AppBackground from '../../components/chrome/AppBackground';
 
 /**
  * MorningPhase - Game Day Wake Up
@@ -55,7 +56,7 @@ export default function MorningPhase({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: COLORS.blue }]} />
+      <AppBackground variant="gameDay" />
 
       <SafeAreaView style={styles.safeArea}>
         {/* Header */}

@@ -11,13 +11,24 @@ import {
   Animated,
   StatusBar,
 } from 'react-native';
-import { COLORS, SPACING, SHADOWS, TYPOGRAPHY, RADIUS } from '../constants/theme';
-import { QrCode, MapPin, Utensils, ArrowLeft, Sparkles, Shield } from 'lucide-react-native';
+import { COLORS, SPACING, SHADOWS, TYPOGRAPHY, RADIUS, CHROME } from '../constants/theme';
+import {
+  QrCode,
+  Utensils,
+  Sparkles,
+  Shield,
+  Car,
+  Clock,
+  Route,
+  Users,
+  ChevronRight,
+} from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { useApp } from '../context/AppContext';
+import AppBackground from '../components/chrome/AppBackground';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 const CARD_WIDTH = width - SPACING.l * 2;
 const CARD_HEIGHT = 420;
 
@@ -29,10 +40,11 @@ const CARD_HEIGHT = 420;
  */
 
 export default function TicketScreen({ navigation }) {
-  const { user } = useApp();
+  const { user, currentGame, nextGame, enterGameDay } = useApp();
   const [isFlipped, setIsFlipped] = useState(false);
   const flipAnim = useRef(new Animated.Value(0)).current;
   const shimmerAnim = useRef(new Animated.Value(0)).current;
+  const featuredGame = currentGame || nextGame;
 
   // Shimmer effect
   useEffect(() => {
@@ -74,12 +86,55 @@ export default function TicketScreen({ navigation }) {
     outputRange: [-CARD_WIDTH, CARD_WIDTH],
   });
 
+  const enterGameDayWithIntent = (intent) => {
+    enterGameDay({ intent });
+    navigation.navigate('Home', { screen: 'GameDayHome' });
+  };
+
+  const conciergeModules = [
+    {
+      id: 'arrival',
+      icon: Car,
+      title: 'Arrival Orchestration',
+      subtitle: `${user.parking.lot} • Spot ${user.parking.spot}`,
+      detail: 'Dedicated host at Gate 40 with fast-lane check-in.',
+      cta: 'Launch Parking Guidance',
+      action: () => navigation.navigate('Home', { screen: 'LiveOpsDetail', params: { opId: 'parking' } }),
+    },
+    {
+      id: 'entry',
+      icon: Shield,
+      title: 'Entry & Security Lane',
+      subtitle: 'Premium lane credentials synced',
+      detail: 'Credential pre-check enabled. Queue model refreshes every minute.',
+      cta: 'Open Gate Routing',
+      action: () => navigation.navigate('Home', { screen: 'LiveOpsDetail', params: { opId: 'gate' } }),
+    },
+    {
+      id: 'hospitality',
+      icon: Utensils,
+      title: 'In-Seat Hospitality',
+      subtitle: 'Chef pickup + in-seat delivery windows',
+      detail: 'Reserve halftime tray, beverage pairing, and suite-level service.',
+      cta: 'Activate In-Seat Service',
+      action: () => enterGameDayWithIntent('ingame'),
+    },
+    {
+      id: 'postgame',
+      icon: Users,
+      title: 'Postgame Privileges',
+      subtitle: 'Tunnel escort and field access queue',
+      detail: 'Your premium postgame route is staged for controlled access.',
+      cta: 'Open Postgame Plan',
+      action: () => enterGameDayWithIntent('postgame'),
+    },
+  ];
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
 
-      {/* Background - using only official U-M Blue */}
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: COLORS.blue }]} />
+      <AppBackground />
 
       <SafeAreaView style={styles.safeArea}>
         {/* Header */}
@@ -230,26 +285,70 @@ export default function TicketScreen({ navigation }) {
 
           {/* Concierge Section */}
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>CONCIERGE</Text>
+            <Text style={styles.sectionTitle}>VIP CONCIERGE</Text>
           </View>
 
-          <View style={styles.actionGrid}>
-            <TouchableOpacity style={styles.actionCard} activeOpacity={0.8}>
-              <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
-              <View style={styles.actionIconContainer}>
-                <Utensils size={24} color={COLORS.maize} />
+          <View style={styles.conciergeHero}>
+            <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
+            <View style={styles.conciergeHeroTop}>
+              <View style={styles.conciergeChip}>
+                <Sparkles size={12} color={COLORS.maize} />
+                <Text style={styles.conciergeChipText}>Today&apos;s Host Plan</Text>
               </View>
-              <Text style={styles.actionTitle}>Order Food</Text>
-              <Text style={styles.actionSubtitle}>Skip the line</Text>
-            </TouchableOpacity>
+              <Text style={styles.conciergeHeroTitle}>Premium Game Day Control</Text>
+            </View>
+            <Text style={styles.conciergeHeroMeta}>
+              {featuredGame?.opponent ? `vs ${featuredGame.opponent}` : 'Next home matchup'} • {featuredGame?.time || '12:00 PM'}
+            </Text>
+            <Text style={styles.conciergeHeroHint}>
+              Arrival, gate, hospitality, and postgame privileges are coordinated here.
+            </Text>
+          </View>
 
-            <TouchableOpacity style={styles.actionCard} activeOpacity={0.8}>
-              <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
-              <View style={styles.actionIconContainer}>
-                <MapPin size={24} color={COLORS.maize} />
-              </View>
-              <Text style={styles.actionTitle}>Directions</Text>
-              <Text style={styles.actionSubtitle}>To Section {user.seat.section}</Text>
+          <View style={styles.moduleStack}>
+            {conciergeModules.map(module => {
+              const Icon = module.icon;
+              return (
+                <TouchableOpacity
+                  key={module.id}
+                  style={styles.moduleCard}
+                  activeOpacity={0.88}
+                  onPress={module.action}
+                >
+                  <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
+                  <View style={styles.moduleHeader}>
+                    <View style={styles.moduleIconWrap}>
+                      <Icon size={16} color={COLORS.maize} />
+                    </View>
+                    <Text style={styles.moduleTitle}>{module.title}</Text>
+                  </View>
+                  <Text style={styles.moduleSubtitle}>{module.subtitle}</Text>
+                  <Text style={styles.moduleDetail}>{module.detail}</Text>
+                  <View style={styles.moduleFooter}>
+                    <Text style={styles.moduleCta}>{module.cta}</Text>
+                    <ChevronRight size={16} color={COLORS.maize} />
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <View style={styles.quickActionRow}>
+            <TouchableOpacity
+              style={styles.quickAction}
+              activeOpacity={0.85}
+              onPress={() => navigation.navigate('Home', { screen: 'LiveOpsDetail', params: { opId: 'walk' } })}
+            >
+              <Route size={14} color={COLORS.maize} />
+              <Text style={styles.quickActionText}>Route to Section {user.seat.section}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickAction}
+              activeOpacity={0.85}
+              onPress={() => navigation.navigate('Home', { screen: 'LiveOpsDetail', params: { opId: 'weather' } })}
+            >
+              <Clock size={14} color={COLORS.maize} />
+              <Text style={styles.quickActionText}>Kickoff Conditions</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -529,42 +628,128 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
 
-  // Action Grid
-  actionGrid: {
-    flexDirection: 'row',
-    gap: SPACING.m,
+  conciergeHero: {
     width: '100%',
-  },
-  actionCard: {
-    flex: 1,
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
-    padding: SPACING.l,
-    alignItems: 'center',
     borderWidth: 1,
-    borderColor: COLORS.border,
-    minHeight: 130,
-    justifyContent: 'center',
+    borderColor: CHROME.surface.border,
+    backgroundColor: CHROME.surface.base,
+    padding: SPACING.m,
+    marginBottom: SPACING.m,
   },
-  actionIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,203,5,0.15)',
+  conciergeHeroTop: {
+    marginBottom: SPACING.xs,
+  },
+  conciergeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    alignSelf: 'flex-start',
+    borderRadius: RADIUS.full,
+    paddingHorizontal: SPACING.s,
+    paddingVertical: SPACING.xs,
+    backgroundColor: 'rgba(255,203,5,0.12)',
+    marginBottom: SPACING.xs,
+  },
+  conciergeChipText: {
+    color: COLORS.maize,
+    fontSize: TYPOGRAPHY.fontSize.xs,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 0.6,
+  },
+  conciergeHeroTitle: {
+    color: COLORS.text,
+    fontSize: TYPOGRAPHY.fontSize.lg,
+    fontFamily: 'Montserrat_700Bold',
+  },
+  conciergeHeroMeta: {
+    color: COLORS.textSecondary,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    fontFamily: 'AtkinsonHyperlegible_700Bold',
+    marginBottom: SPACING.xs,
+  },
+  conciergeHeroHint: {
+    color: COLORS.textTertiary,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    lineHeight: 18,
+    fontFamily: 'AtkinsonHyperlegible_400Regular',
+  },
+  moduleStack: {
+    width: '100%',
+    gap: SPACING.s,
+  },
+  moduleCard: {
+    borderRadius: RADIUS.md,
+    overflow: 'hidden',
+    padding: SPACING.s,
+    borderWidth: 1,
+    borderColor: CHROME.surface.borderSoft,
+    backgroundColor: CHROME.surface.base,
+  },
+  moduleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    marginBottom: SPACING.xs,
+  },
+  moduleIconWrap: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,203,5,0.14)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: SPACING.s,
   },
-  actionTitle: {
+  moduleTitle: {
     color: COLORS.text,
     fontSize: TYPOGRAPHY.fontSize.base,
     fontFamily: 'Montserrat_700Bold',
-    marginTop: SPACING.xs,
   },
-  actionSubtitle: {
-    color: COLORS.textTertiary,
-    fontSize: TYPOGRAPHY.fontSize.xs,
+  moduleSubtitle: {
+    color: COLORS.maize,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    fontFamily: 'AtkinsonHyperlegible_700Bold',
+    marginBottom: SPACING.xxs,
+  },
+  moduleDetail: {
+    color: COLORS.textSecondary,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    lineHeight: 18,
     fontFamily: 'AtkinsonHyperlegible_400Regular',
-    marginTop: SPACING.xxs,
+  },
+  moduleFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    marginTop: SPACING.s,
+    paddingTop: SPACING.s,
+  },
+  moduleCta: {
+    color: COLORS.maize,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    fontFamily: 'Montserrat_700Bold',
+  },
+  quickActionRow: {
+    width: '100%',
+    gap: SPACING.s,
+    marginTop: SPACING.s,
+  },
+  quickAction: {
+    borderRadius: RADIUS.full,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
+    paddingHorizontal: SPACING.m,
+    paddingVertical: SPACING.s,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.s,
+  },
+  quickActionText: {
+    color: COLORS.textSecondary,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    fontFamily: 'AtkinsonHyperlegible_400Regular',
   },
 });

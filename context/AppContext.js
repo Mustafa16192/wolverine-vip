@@ -9,6 +9,16 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
  */
 
 const AppContext = createContext();
+const GAME_DAY_PHASES = ['morning', 'tailgate', 'travel', 'parking', 'pregame', 'ingame', 'postgame', 'home'];
+
+const INTENT_PHASE_MAP = {
+  parking: 'parking',
+  travel: 'travel',
+  entry: 'pregame',
+  ingame: 'ingame',
+  postgame: 'postgame',
+  home: 'home',
+};
 
 // Mock schedule data - in production, this would come from an API
 const GAME_SCHEDULE = [
@@ -48,12 +58,55 @@ const USER_PROFILE = {
   },
 };
 
+function parseKickoffDate(game) {
+  if (!game?.date) return null;
+
+  const [year, month, day] = game.date.split('-').map(Number);
+  if (!year || !month || !day) return null;
+
+  let hours = 12;
+  let minutes = 0;
+  const timeMatch = (game.time || '').match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+
+  if (timeMatch) {
+    hours = Number(timeMatch[1]);
+    minutes = Number(timeMatch[2]);
+    const meridiem = timeMatch[3].toUpperCase();
+    if (meridiem === 'PM' && hours < 12) hours += 12;
+    if (meridiem === 'AM' && hours === 12) hours = 0;
+  }
+
+  return new Date(year, month - 1, day, hours, minutes, 0, 0);
+}
+
 export function AppProvider({ children }) {
   const [isGameDay, setIsGameDay] = useState(false);
   const [manualModeOverride, setManualModeOverride] = useState(null);
   const [currentGame, setCurrentGame] = useState(null);
   const [nextGame, setNextGame] = useState(null);
   const [gameDayPhase, setGameDayPhase] = useState('morning'); // morning, tailgate, travel, parking, pregame, ingame, postgame, home
+
+  const resolvePhaseByTime = (referenceGame) => {
+    const kickoff = parseKickoffDate(referenceGame);
+    if (!kickoff) return 'morning';
+
+    // Positive values are hours until kickoff; negatives are hours after kickoff.
+    const deltaHours = (kickoff.getTime() - Date.now()) / (1000 * 60 * 60);
+
+    if (deltaHours > 6) return 'morning';
+    if (deltaHours > 3) return 'tailgate';
+    if (deltaHours > 1.5) return 'travel';
+    if (deltaHours > 0.5) return 'parking';
+    if (deltaHours > 0) return 'pregame';
+    if (deltaHours > -3.5) return 'ingame';
+    if (deltaHours > -6) return 'postgame';
+    return 'home';
+  };
+
+  const resolvePhaseForIntent = (intent, referenceGame) => {
+    if (intent && INTENT_PHASE_MAP[intent]) return INTENT_PHASE_MAP[intent];
+    return resolvePhaseByTime(referenceGame);
+  };
 
   // Check if today is a game day
   useEffect(() => {
@@ -85,7 +138,15 @@ export function AppProvider({ children }) {
 
   // Toggle mode manually
   const toggleMode = () => {
-    setManualModeOverride(prev => prev === null ? !isGameDay : !prev);
+    if (isGameDay) {
+      setManualModeOverride(false);
+      setIsGameDay(false);
+    } else {
+      const phase = resolvePhaseForIntent('journey', currentGame || nextGame);
+      setManualModeOverride(true);
+      setIsGameDay(true);
+      setGameDayPhase(phase);
+    }
   };
 
   // Reset to auto-detection
@@ -93,12 +154,24 @@ export function AppProvider({ children }) {
     setManualModeOverride(null);
   };
 
+  const enterGameDay = ({ intent = 'journey' } = {}) => {
+    const phase = resolvePhaseForIntent(intent, currentGame || nextGame);
+    setManualModeOverride(true);
+    setIsGameDay(true);
+    setGameDayPhase(phase);
+  };
+
+  const exitGameDay = () => {
+    setManualModeOverride(false);
+    setIsGameDay(false);
+    setGameDayPhase('morning');
+  };
+
   // Game day phase progression
   const advancePhase = () => {
-    const phases = ['morning', 'tailgate', 'travel', 'parking', 'pregame', 'ingame', 'postgame', 'home'];
-    const currentIndex = phases.indexOf(gameDayPhase);
-    if (currentIndex < phases.length - 1) {
-      setGameDayPhase(phases[currentIndex + 1]);
+    const currentIndex = GAME_DAY_PHASES.indexOf(gameDayPhase);
+    if (currentIndex < GAME_DAY_PHASES.length - 1) {
+      setGameDayPhase(GAME_DAY_PHASES[currentIndex + 1]);
     }
   };
 
@@ -111,6 +184,8 @@ export function AppProvider({ children }) {
     isGameDay,
     toggleMode,
     resetToAutoMode,
+    enterGameDay,
+    exitGameDay,
     manualModeOverride,
 
     // Game info

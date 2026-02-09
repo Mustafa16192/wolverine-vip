@@ -7,9 +7,10 @@ import {
   ScrollView,
   Dimensions,
 } from 'react-native';
-import { COLORS, SPACING, TYPOGRAPHY, RADIUS } from '../constants/theme';
+import { COLORS, SPACING, TYPOGRAPHY, RADIUS, CHROME } from '../constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import AppBackground from '../components/chrome/AppBackground';
 import {
   Trophy,
   TrendingUp,
@@ -56,10 +57,7 @@ export default function StatsScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={[COLORS.blue, COLORS.blue]}
-        style={StyleSheet.absoluteFill}
-      />
+      <AppBackground />
 
       <SafeAreaView style={styles.safeArea}>
         <ScrollView
@@ -292,7 +290,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.xl,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: CHROME.surface.borderSoft,
     marginBottom: SPACING.xl,
   },
   heroContent: {
@@ -384,7 +382,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     padding: SPACING.m,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: CHROME.surface.borderSoft,
   },
   statCardHeader: {
     flexDirection: 'row',
@@ -410,7 +408,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: CHROME.surface.borderSoft,
     marginBottom: SPACING.xl,
   },
   standingsHeader: {
@@ -497,7 +495,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     padding: SPACING.l,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: CHROME.surface.borderSoft,
     alignItems: 'center',
   },
   fanStatValue: {
@@ -520,7 +518,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     padding: SPACING.l,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: CHROME.surface.borderSoft,
   },
   fanRankContent: {
     flexDirection: 'row',

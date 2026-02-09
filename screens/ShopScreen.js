@@ -7,10 +7,12 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  Image,
 } from 'react-native';
-import { COLORS, SPACING, TYPOGRAPHY, RADIUS } from '../constants/theme';
+import { COLORS, SPACING, TYPOGRAPHY, RADIUS, CHROME } from '../constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import AppBackground from '../components/chrome/AppBackground';
 import {
   ShoppingBag,
   Star,
@@ -18,7 +20,6 @@ import {
   Truck,
   ChevronRight,
   Heart,
-  Package,
 } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
@@ -40,6 +41,7 @@ const FEATURED_PRODUCT = {
   isVipExclusive: true,
   rating: 4.9,
   reviews: 234,
+  imageUrl: 'https://images.unsplash.com/photo-1560272564-c83b66b1ad12?auto=format&fit=crop&w=1400&q=80',
 };
 
 const PRODUCTS = [
@@ -49,6 +51,7 @@ const PRODUCTS = [
     price: 89.99,
     isVipExclusive: false,
     rating: 4.7,
+    imageUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80',
   },
   {
     id: 3,
@@ -56,6 +59,7 @@ const PRODUCTS = [
     price: 34.99,
     isVipExclusive: true,
     rating: 4.8,
+    imageUrl: 'https://images.unsplash.com/photo-1521369909029-2afed882baee?auto=format&fit=crop&w=900&q=80',
   },
   {
     id: 4,
@@ -63,6 +67,7 @@ const PRODUCTS = [
     price: 64.99,
     isVipExclusive: false,
     rating: 4.6,
+    imageUrl: 'https://images.unsplash.com/photo-1527719327859-c6ce80353573?auto=format&fit=crop&w=900&q=80',
   },
   {
     id: 5,
@@ -70,6 +75,7 @@ const PRODUCTS = [
     price: 44.99,
     isVipExclusive: true,
     rating: 4.9,
+    imageUrl: 'https://images.unsplash.com/photo-1603037159424-8fd3f788f137?auto=format&fit=crop&w=900&q=80',
   },
 ];
 
@@ -84,10 +90,7 @@ const CATEGORIES = [
 export default function ShopScreen() {
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={[COLORS.blue, COLORS.blue]}
-        style={StyleSheet.absoluteFill}
-      />
+      <AppBackground />
 
       <SafeAreaView style={styles.safeArea}>
         <ScrollView
@@ -159,13 +162,13 @@ export default function ShopScreen() {
 
             {/* Product Image Placeholder */}
             <View style={styles.featuredImageContainer}>
+              <Image source={{ uri: FEATURED_PRODUCT.imageUrl }} style={styles.featuredImagePlaceholder} />
               <LinearGradient
-                colors={[COLORS.blue, 'rgba(0,39,76,0.7)']}
-                style={styles.featuredImagePlaceholder}
-              >
-                <Text style={styles.featuredImageText}>M</Text>
-                <Package size={48} color={COLORS.maize} style={styles.featuredIcon} />
-              </LinearGradient>
+                colors={['rgba(0,0,0,0.12)', 'rgba(0,0,0,0.54)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
 
               {FEATURED_PRODUCT.isVipExclusive && (
                 <View style={styles.exclusiveBadge}>
@@ -216,12 +219,13 @@ export default function ShopScreen() {
                 <BlurView intensity={15} tint="dark" style={StyleSheet.absoluteFill} />
 
                 <View style={styles.productImageContainer}>
+                  <Image source={{ uri: product.imageUrl }} style={styles.productImagePlaceholder} />
                   <LinearGradient
-                    colors={['rgba(0,39,76,0.8)', 'rgba(0,39,76,0.4)']}
-                    style={styles.productImagePlaceholder}
-                  >
-                    <Package size={32} color={COLORS.maize} />
-                  </LinearGradient>
+                    colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.42)']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
+                    style={StyleSheet.absoluteFill}
+                  />
 
                   {product.isVipExclusive && (
                     <View style={styles.vipBadgeSmall}>
@@ -307,11 +311,11 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: CHROME.surface.elevated,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: CHROME.surface.borderSoft,
   },
   cartBadge: {
     position: 'absolute',
@@ -335,7 +339,8 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: CHROME.surface.border,
+    backgroundColor: CHROME.surface.base,
     marginBottom: SPACING.l,
   },
   benefitsContent: {
@@ -378,9 +383,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.m,
     paddingVertical: SPACING.s,
     borderRadius: RADIUS.full,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: CHROME.surface.elevated,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: CHROME.surface.borderSoft,
   },
   categoryChipActive: {
     backgroundColor: COLORS.maize,
@@ -418,7 +423,8 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.xl,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: CHROME.surface.border,
+    backgroundColor: CHROME.surface.base,
     marginBottom: SPACING.xl,
   },
   featuredImageContainer: {
@@ -426,19 +432,9 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   featuredImagePlaceholder: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  featuredImageText: {
-    color: COLORS.maize,
-    fontSize: 120,
-    fontFamily: 'Montserrat_700Bold',
-    opacity: 0.1,
-    position: 'absolute',
-  },
-  featuredIcon: {
-    opacity: 0.5,
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
   },
   exclusiveBadge: {
     position: 'absolute',
@@ -553,16 +549,17 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: CHROME.surface.borderSoft,
+    backgroundColor: CHROME.surface.base,
   },
   productImageContainer: {
     height: 120,
     position: 'relative',
   },
   productImagePlaceholder: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
   },
   vipBadgeSmall: {
     position: 'absolute',
@@ -618,7 +615,8 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: CHROME.surface.borderSoft,
+    backgroundColor: CHROME.surface.base,
   },
   orderContent: {
     flexDirection: 'row',

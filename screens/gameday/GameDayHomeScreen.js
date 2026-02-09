@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Dimensions,
   Image,
+  Platform,
 } from 'react-native';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS } from '../../constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -21,6 +22,7 @@ import {
   Utensils,
   Trophy,
   Home,
+  ChevronLeft,
   ChevronRight,
   ChevronDown,
   Cloud,
@@ -38,6 +40,7 @@ import {
   EyeOff,
 } from 'lucide-react-native';
 import { useApp } from '../../context/AppContext';
+import AppBackground from '../../components/chrome/AppBackground';
 
 const { width, height } = Dimensions.get('window');
 
@@ -60,7 +63,7 @@ const JOURNEY_PHASES = [
  * Compact phase dots at top, advance CTA at bottom.
  */
 export default function GameDayHomeScreen({ navigation }) {
-  const { gameDayPhase, advancePhase, goToPhase, currentGame, user } = useApp();
+  const { gameDayPhase, advancePhase, goToPhase, currentGame, user, exitGameDay } = useApp();
   const [skippedPhases, setSkippedPhases] = useState({});
 
   const currentPhaseIndex = JOURNEY_PHASES.findIndex(p => p.id === gameDayPhase);
@@ -93,6 +96,15 @@ export default function GameDayHomeScreen({ navigation }) {
     navigation.navigate(screenName);
   };
 
+  const handleBackToDashboard = () => {
+    exitGameDay();
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    navigation.navigate('Dashboard');
+  };
+
   // Get next phase label for CTA button
   const getNextPhaseLabel = () => {
     let nextIndex = currentPhaseIndex + 1;
@@ -105,11 +117,18 @@ export default function GameDayHomeScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: COLORS.blue }]} />
+      <AppBackground variant="gameDay" />
 
       <SafeAreaView style={styles.safeArea}>
         {/* Compact Header */}
         <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.minimalBackButton}
+            onPress={handleBackToDashboard}
+            activeOpacity={0.8}
+          >
+            <ChevronLeft size={18} color={COLORS.textSecondary} />
+          </TouchableOpacity>
           <View style={styles.headerLeft}>
             <View style={styles.gameDayBadge}>
               <Zap size={12} color={COLORS.blue} />
@@ -986,6 +1005,13 @@ const styles = StyleSheet.create({
     paddingTop: SPACING.s,
     paddingBottom: SPACING.s,
   },
+  minimalBackButton: {
+    width: 30,
+    height: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: SPACING.xs,
+  },
   headerLeft: {
     flex: 1,
   },
@@ -1079,7 +1105,7 @@ const styles = StyleSheet.create({
   },
   mainContentInner: {
     paddingHorizontal: SPACING.l,
-    paddingBottom: 100,
+    paddingBottom: 182,
   },
 
   // Phase Card
@@ -1192,7 +1218,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingHorizontal: SPACING.l,
-    paddingBottom: SPACING.m,
+    paddingBottom: Platform.OS === 'ios' ? 116 : 92,
     paddingTop: SPACING.s,
   },
   advanceButton: {

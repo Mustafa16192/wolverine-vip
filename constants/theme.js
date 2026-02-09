@@ -188,6 +188,29 @@ export const SHADOWS = {
 };
 
 // ============================================
+// CHROME - Shared Visual Surface System
+// ============================================
+
+export const CHROME = {
+  background: {
+    gradient: ['#01060F', '#022349', '#00162D'],
+    overlayTop: ['rgba(47,101,167,0.28)', 'transparent'],
+    overlayBottom: ['transparent', 'rgba(0,0,0,0.42)'],
+  },
+  surface: {
+    base: 'rgba(7, 16, 33, 0.62)',
+    elevated: 'rgba(10, 20, 40, 0.78)',
+    border: 'rgba(255, 255, 255, 0.16)',
+    borderSoft: 'rgba(255, 255, 255, 0.10)',
+    highlight: 'rgba(255, 203, 5, 0.16)',
+  },
+  dock: {
+    background: 'rgba(8, 14, 28, 0.72)',
+    border: 'rgba(255, 255, 255, 0.18)',
+  },
+};
+
+// ============================================
 // ACCESSIBILITY - WCAG 2.1 AA Compliance
 // ============================================
 

@@ -22,6 +22,7 @@ import {
   Sparkles,
 } from 'lucide-react-native';
 import { useApp } from '../../context/AppContext';
+import AppBackground from '../../components/chrome/AppBackground';
 
 const { width } = Dimensions.get('window');
 
@@ -68,7 +69,7 @@ export default function PregamePhase({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: COLORS.blue }]} />
+      <AppBackground variant="gameDay" />
 
       <SafeAreaView style={styles.safeArea}>
         {/* Header */}

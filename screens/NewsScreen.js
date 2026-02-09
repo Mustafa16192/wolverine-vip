@@ -1,233 +1,216 @@
-import React from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   SafeAreaView,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
-  Image,
+  ImageBackground,
+  ScrollView,
   Dimensions,
+  Platform,
 } from 'react-native';
-import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import {
-  Clock,
-  ChevronRight,
-  Bookmark,
-  Share2,
-  Flame,
-  Star,
-} from 'lucide-react-native';
+import { Clock, Bookmark, Share2, Star, ChevronRight } from 'lucide-react-native';
+import { COLORS, SPACING, TYPOGRAPHY, RADIUS, CHROME } from '../constants/theme';
+import AppBackground from '../components/chrome/AppBackground';
 
-const { width } = Dimensions.get('window');
+const { height: DEFAULT_HEIGHT } = Dimensions.get('window');
+const FILTERS = ['All', 'Exclusive', 'Analysis', 'Team News'];
 
-/**
- * NewsScreen - Insider Wire & News Feed
- *
- * Displays team news, insider content, and
- * exclusive VIP articles.
- */
-
-// Mock news data
-const FEATURED_ARTICLE = {
-  id: 1,
-  title: 'Michigan\'s Path to the Playoffs: What We Know',
-  excerpt: 'With an undefeated record and dominant performances, the Wolverines are in prime position for a CFP berth.',
-  category: 'ANALYSIS',
-  timeAgo: '2 hours ago',
-  readTime: '5 min read',
-  isVipExclusive: true,
-  imageUrl: null, // Would be actual image in production
-};
-
-const NEWS_ARTICLES = [
+const STORIES = [
   {
-    id: 2,
+    id: 'news-1',
+    title: 'Michigan\'s Path to the Playoffs: What We Know',
+    excerpt: 'With dominant performances and a top defense, the Wolverines control their postseason path.',
+    category: 'ANALYSIS',
+    timeAgo: '2 hours ago',
+    readTime: '5 min read',
+    isVipExclusive: true,
+    source: 'The Wolverine Wire',
+    imageUrl: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1800&q=80',
+  },
+  {
+    id: 'news-2',
     title: 'Game Preview: Michigan vs. Ohio State',
-    excerpt: 'Everything you need to know about the biggest rivalry in college football.',
+    excerpt: 'Key matchups, momentum signals, and what will decide the rivalry showdown.',
     category: 'PREVIEW',
     timeAgo: '4 hours ago',
     readTime: '4 min read',
     isVipExclusive: false,
+    source: 'Game Day Desk',
+    imageUrl: 'https://images.unsplash.com/photo-1471295253337-3ceaaedca402?auto=format&fit=crop&w=1800&q=80',
   },
   {
-    id: 3,
+    id: 'news-3',
     title: 'Injury Report: Key Players Return to Practice',
-    excerpt: 'Good news on the injury front as several starters were spotted at practice.',
+    excerpt: 'Several starters were active in full-contact drills ahead of this week\'s matchup.',
     category: 'TEAM NEWS',
     timeAgo: '6 hours ago',
-    readTime: '2 min read',
+    readTime: '3 min read',
     isVipExclusive: false,
+    source: 'Practice Notes',
+    imageUrl: 'https://images.unsplash.com/photo-1518091043644-c1d4457512c6?auto=format&fit=crop&w=1800&q=80',
   },
   {
-    id: 4,
+    id: 'news-4',
     title: 'VIP Exclusive: Behind the Scenes at The Big House',
-    excerpt: 'An exclusive look at the game day preparations that make Michigan football special.',
+    excerpt: 'An insider look at tunnel prep, host operations, and premium access workflows.',
     category: 'EXCLUSIVE',
     timeAgo: '1 day ago',
     readTime: '7 min read',
     isVipExclusive: true,
+    source: 'VIP Insider',
+    imageUrl: 'https://images.unsplash.com/photo-1551958219-acbc608c6377?auto=format&fit=crop&w=1800&q=80',
   },
   {
-    id: 5,
+    id: 'news-5',
     title: 'Recruiting Update: Top 2027 Prospects Visit Campus',
-    excerpt: 'Several five-star recruits were in attendance for the latest home game.',
-    category: 'RECRUITING',
+    excerpt: 'Multiple high-priority recruits were on site for the latest home game experience.',
+    category: 'TEAM NEWS',
     timeAgo: '1 day ago',
-    readTime: '3 min read',
+    readTime: '4 min read',
     isVipExclusive: false,
-  },
-  {
-    id: 6,
-    title: 'Season Ticket Holder Spotlight: The Price Family Legacy',
-    excerpt: 'Three generations of Wolverines share their game day traditions.',
-    category: 'COMMUNITY',
-    timeAgo: '2 days ago',
-    readTime: '6 min read',
-    isVipExclusive: true,
+    source: 'Recruiting Board',
+    imageUrl: 'https://images.unsplash.com/photo-1518604666860-9ed391f76460?auto=format&fit=crop&w=1800&q=80',
   },
 ];
 
-const QUICK_LINKS = [
-  { label: 'All', active: true },
-  { label: 'Exclusive', active: false },
-  { label: 'Analysis', active: false },
-  { label: 'Team News', active: false },
-];
+function matchesFilter(story, filter) {
+  if (filter === 'All') return true;
+  if (filter === 'Exclusive') return story.isVipExclusive;
+  if (filter === 'Analysis') return story.category === 'ANALYSIS' || story.category === 'PREVIEW';
+  if (filter === 'Team News') return story.category === 'TEAM NEWS';
+  return true;
+}
 
 export default function NewsScreen() {
-  return (
-    <View style={styles.container}>
-      <LinearGradient
-        colors={[COLORS.blue, COLORS.blue]}
-        style={StyleSheet.absoluteFill}
-      />
+  const listRef = useRef(null);
+  const [activeFilter, setActiveFilter] = useState('All');
+  const [pageHeight, setPageHeight] = useState(DEFAULT_HEIGHT);
 
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.headerLabel}>INSIDER</Text>
-            <Text style={styles.headerTitle}>THE WIRE</Text>
+  const filteredStories = useMemo(() => {
+    const result = STORIES.filter(story => matchesFilter(story, activeFilter));
+    return result.length ? result : STORIES;
+  }, [activeFilter]);
+
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      listRef.current?.scrollToOffset({ offset: 0, animated: false });
+    });
+  }, [activeFilter]);
+
+  const renderStory = ({ item, index }) => {
+    const bottomInset = Platform.OS === 'ios' ? 178 : 146;
+
+    return (
+      <View style={[styles.storyPage, { height: pageHeight }]}>
+        <ImageBackground source={{ uri: item.imageUrl }} resizeMode="cover" style={styles.storyImage}>
+          <LinearGradient
+            colors={['rgba(0,0,0,0.15)', 'rgba(0,0,0,0.25)', 'rgba(0,0,0,0.84)']}
+            locations={[0, 0.45, 1]}
+            style={StyleSheet.absoluteFill}
+          />
+
+          <View style={styles.storyTop}>
+            <View style={styles.storyTitleRow}>
+              <Text style={styles.storyEyebrow}>INSIDER WIRE</Text>
+              <Text style={styles.storyCounter}>{index + 1}/{filteredStories.length}</Text>
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterRow}
+            >
+              {FILTERS.map(filter => {
+                const selected = filter === activeFilter;
+                return (
+                  <TouchableOpacity
+                    key={filter}
+                    style={[styles.filterChip, selected && styles.filterChipActive]}
+                    activeOpacity={0.85}
+                    onPress={() => setActiveFilter(filter)}
+                  >
+                    <Text style={[styles.filterText, selected && styles.filterTextActive]}>
+                      {filter}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           </View>
 
-          {/* Quick Filters */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.filtersContainer}
-            contentContainerStyle={styles.filtersContent}
-          >
-            {QUICK_LINKS.map((link, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[styles.filterChip, link.active && styles.filterChipActive]}
-              >
-                <Text style={[styles.filterChipText, link.active && styles.filterChipTextActive]}>
-                  {link.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          {/* Featured Article */}
-          <TouchableOpacity style={styles.featuredCard} activeOpacity={0.9}>
-            <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
-            <LinearGradient
-              colors={['rgba(255,203,5,0.15)', 'transparent']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
-
-            {/* Featured Image Placeholder */}
-            <View style={styles.featuredImageContainer}>
-              <LinearGradient
-                colors={[COLORS.blue, 'rgba(0,39,76,0.8)']}
-                style={styles.featuredImagePlaceholder}
-              >
-                <Text style={styles.featuredImageText}>M</Text>
-              </LinearGradient>
-              {FEATURED_ARTICLE.isVipExclusive && (
-                <View style={styles.vipBadge}>
-                  <Star size={10} color={COLORS.blue} fill={COLORS.blue} />
-                  <Text style={styles.vipBadgeText}>VIP</Text>
+          <View style={[styles.storyBottom, { paddingBottom: bottomInset }]}>
+            <BlurView intensity={26} tint="dark" style={styles.storyMetaCard}>
+              <View style={styles.metaTopRow}>
+                <View style={styles.sourceBlock}>
+                  <Text style={styles.sourceText}>{item.source}</Text>
+                  <View style={styles.metaTimeRow}>
+                    <Clock size={12} color={COLORS.textSecondary} />
+                    <Text style={styles.metaTimeText}>{item.timeAgo} • {item.readTime}</Text>
+                  </View>
                 </View>
-              )}
-            </View>
-
-            <View style={styles.featuredContent}>
-              <View style={styles.featuredMeta}>
-                <View style={styles.categoryBadge}>
-                  <Flame size={10} color={COLORS.maize} />
-                  <Text style={styles.categoryText}>{FEATURED_ARTICLE.category}</Text>
-                </View>
-                <View style={styles.metaInfo}>
-                  <Clock size={12} color={COLORS.textTertiary} />
-                  <Text style={styles.metaText}>{FEATURED_ARTICLE.timeAgo}</Text>
-                </View>
+                {item.isVipExclusive && (
+                  <View style={styles.vipBadge}>
+                    <Star size={10} color={COLORS.blue} fill={COLORS.blue} />
+                    <Text style={styles.vipBadgeText}>VIP</Text>
+                  </View>
+                )}
               </View>
 
-              <Text style={styles.featuredTitle}>{FEATURED_ARTICLE.title}</Text>
-              <Text style={styles.featuredExcerpt}>{FEATURED_ARTICLE.excerpt}</Text>
+              <Text style={styles.categoryLabel}>{item.category}</Text>
+              <Text style={styles.storyTitle}>{item.title}</Text>
+              <Text style={styles.storyExcerpt}>{item.excerpt}</Text>
 
-              <View style={styles.featuredFooter}>
-                <Text style={styles.readTime}>{FEATURED_ARTICLE.readTime}</Text>
-                <View style={styles.featuredActions}>
-                  <TouchableOpacity style={styles.actionButton}>
-                    <Bookmark size={18} color={COLORS.textSecondary} />
+              <View style={styles.storyFooter}>
+                <TouchableOpacity style={styles.readMoreButton} activeOpacity={0.85}>
+                  <Text style={styles.readMoreText}>Read Full Story</Text>
+                  <ChevronRight size={16} color={COLORS.blue} />
+                </TouchableOpacity>
+
+                <View style={styles.storyActions}>
+                  <TouchableOpacity style={styles.iconButton} activeOpacity={0.85}>
+                    <Bookmark size={16} color={COLORS.textSecondary} />
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.actionButton}>
-                    <Share2 size={18} color={COLORS.textSecondary} />
+                  <TouchableOpacity style={styles.iconButton} activeOpacity={0.85}>
+                    <Share2 size={16} color={COLORS.textSecondary} />
                   </TouchableOpacity>
                 </View>
               </View>
-            </View>
-          </TouchableOpacity>
+            </BlurView>
+          </View>
+        </ImageBackground>
+      </View>
+    );
+  };
 
-          {/* Latest News */}
-          <Text style={styles.sectionTitle}>LATEST NEWS</Text>
-
-          {NEWS_ARTICLES.map((article) => (
-            <TouchableOpacity key={article.id} style={styles.articleCard} activeOpacity={0.8}>
-              <BlurView intensity={15} tint="dark" style={StyleSheet.absoluteFill} />
-
-              <View style={styles.articleContent}>
-                <View style={styles.articleHeader}>
-                  <View style={styles.articleCategoryBadge}>
-                    <Text style={styles.articleCategoryText}>{article.category}</Text>
-                  </View>
-                  {article.isVipExclusive && (
-                    <View style={styles.vipBadgeSmall}>
-                      <Star size={8} color={COLORS.blue} fill={COLORS.blue} />
-                      <Text style={styles.vipBadgeTextSmall}>VIP</Text>
-                    </View>
-                  )}
-                </View>
-
-                <Text style={styles.articleTitle}>{article.title}</Text>
-                <Text style={styles.articleExcerpt} numberOfLines={2}>
-                  {article.excerpt}
-                </Text>
-
-                <View style={styles.articleFooter}>
-                  <View style={styles.articleMeta}>
-                    <Text style={styles.articleMetaText}>{article.timeAgo}</Text>
-                    <Text style={styles.articleMetaDot}>•</Text>
-                    <Text style={styles.articleMetaText}>{article.readTime}</Text>
-                  </View>
-                  <ChevronRight size={18} color={COLORS.textTertiary} />
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-
-        </ScrollView>
+  return (
+    <View style={styles.container}>
+      <AppBackground />
+      <SafeAreaView
+        style={styles.safeArea}
+        onLayout={(event) => setPageHeight(event.nativeEvent.layout.height)}
+      >
+        <FlatList
+          ref={listRef}
+          data={filteredStories}
+          keyExtractor={(item) => item.id}
+          renderItem={renderStory}
+          pagingEnabled
+          decelerationRate="fast"
+          bounces={false}
+          showsVerticalScrollIndicator={false}
+          snapToInterval={pageHeight}
+          snapToAlignment="start"
+          getItemLayout={(_, index) => ({
+            length: pageHeight,
+            offset: pageHeight * index,
+            index,
+          })}
+        />
       </SafeAreaView>
     </View>
   );
@@ -241,250 +224,165 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  scrollContent: {
-    padding: SPACING.l,
-    paddingBottom: 120,
+  storyPage: {
+    width: '100%',
   },
-
-  // Header
-  header: {
-    marginBottom: SPACING.l,
+  storyImage: {
+    flex: 1,
+    paddingHorizontal: SPACING.m,
   },
-  headerLabel: {
-    color: COLORS.maize,
+  storyTop: {
+    paddingTop: SPACING.s,
+  },
+  storyTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.s,
+  },
+  storyEyebrow: {
+    color: COLORS.text,
     fontSize: TYPOGRAPHY.fontSize.xs,
     fontFamily: 'Montserrat_700Bold',
-    letterSpacing: 2,
-    marginBottom: SPACING.xs,
+    letterSpacing: 1.1,
   },
-  headerTitle: {
-    color: COLORS.text,
-    fontSize: TYPOGRAPHY.fontSize.xxl,
-    fontFamily: 'Montserrat_700Bold',
-    letterSpacing: 1,
+  storyCounter: {
+    color: COLORS.textSecondary,
+    fontSize: TYPOGRAPHY.fontSize.xs,
+    fontFamily: 'AtkinsonHyperlegible_400Regular',
   },
-
-  // Filters
-  filtersContainer: {
-    marginHorizontal: -SPACING.l,
-    marginBottom: SPACING.l,
-  },
-  filtersContent: {
-    paddingHorizontal: SPACING.l,
-    gap: SPACING.s,
+  filterRow: {
     flexDirection: 'row',
+    gap: SPACING.xs,
+    paddingRight: SPACING.m,
   },
   filterChip: {
-    paddingHorizontal: SPACING.m,
-    paddingVertical: SPACING.s,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: RADIUS.full,
-    backgroundColor: 'rgba(255,255,255,0.08)',
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: CHROME.surface.borderSoft,
+    backgroundColor: CHROME.surface.elevated,
   },
   filterChipActive: {
     backgroundColor: COLORS.maize,
     borderColor: COLORS.maize,
   },
-  filterChipText: {
+  filterText: {
     color: COLORS.textSecondary,
-    fontSize: TYPOGRAPHY.fontSize.sm,
-    fontFamily: 'Montserrat_600SemiBold',
-  },
-  filterChipTextActive: {
-    color: COLORS.blue,
-  },
-
-  // Featured Card
-  featuredCard: {
-    borderRadius: RADIUS.xl,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    marginBottom: SPACING.xl,
-  },
-  featuredImageContainer: {
-    height: 160,
-    position: 'relative',
-  },
-  featuredImagePlaceholder: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  featuredImageText: {
-    color: COLORS.maize,
-    fontSize: 72,
-    fontFamily: 'Montserrat_700Bold',
-    opacity: 0.2,
-  },
-  vipBadge: {
-    position: 'absolute',
-    top: SPACING.m,
-    right: SPACING.m,
-    backgroundColor: COLORS.maize,
-    paddingHorizontal: SPACING.s,
-    paddingVertical: SPACING.xxs,
-    borderRadius: RADIUS.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.xxs,
-  },
-  vipBadgeText: {
-    color: COLORS.blue,
-    fontSize: 10,
+    fontSize: TYPOGRAPHY.fontSize.xs,
     fontFamily: 'Montserrat_700Bold',
     letterSpacing: 0.5,
   },
-  featuredContent: {
-    padding: SPACING.l,
+  filterTextActive: {
+    color: COLORS.blue,
   },
-  featuredMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: SPACING.m,
+  storyBottom: {
+    marginTop: 'auto',
   },
-  categoryBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.xxs,
-  },
-  categoryText: {
-    color: COLORS.maize,
-    fontSize: TYPOGRAPHY.fontSize.xs,
-    fontFamily: 'Montserrat_700Bold',
-    letterSpacing: 1,
-  },
-  metaInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.xxs,
-  },
-  metaText: {
-    color: COLORS.textTertiary,
-    fontSize: TYPOGRAPHY.fontSize.xs,
-    fontFamily: 'AtkinsonHyperlegible_400Regular',
-  },
-  featuredTitle: {
-    color: COLORS.text,
-    fontSize: TYPOGRAPHY.fontSize.xl,
-    fontFamily: 'Montserrat_700Bold',
-    lineHeight: TYPOGRAPHY.fontSize.xl * 1.3,
-    marginBottom: SPACING.s,
-  },
-  featuredExcerpt: {
-    color: COLORS.textSecondary,
-    fontSize: TYPOGRAPHY.fontSize.base,
-    fontFamily: 'AtkinsonHyperlegible_400Regular',
-    lineHeight: TYPOGRAPHY.fontSize.base * 1.5,
-    marginBottom: SPACING.m,
-  },
-  featuredFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  readTime: {
-    color: COLORS.textTertiary,
-    fontSize: TYPOGRAPHY.fontSize.sm,
-    fontFamily: 'AtkinsonHyperlegible_400Regular',
-  },
-  featuredActions: {
-    flexDirection: 'row',
-    gap: SPACING.m,
-  },
-  actionButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  // Section Title
-  sectionTitle: {
-    color: COLORS.textSecondary,
-    fontSize: TYPOGRAPHY.fontSize.xs,
-    fontFamily: 'Montserrat_700Bold',
-    letterSpacing: 2,
-    marginBottom: SPACING.m,
-  },
-
-  // Article Card
-  articleCard: {
+  storyMetaCard: {
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: COLORS.border,
-    marginBottom: SPACING.s,
-  },
-  articleContent: {
+    borderColor: CHROME.surface.border,
+    backgroundColor: CHROME.surface.base,
     padding: SPACING.m,
   },
-  articleHeader: {
+  metaTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: SPACING.xs,
+  },
+  sourceBlock: {
+    flex: 1,
+    marginRight: SPACING.s,
+  },
+  sourceText: {
+    color: COLORS.text,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    fontFamily: 'Montserrat_600SemiBold',
+    marginBottom: 2,
+  },
+  metaTimeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.s,
-    marginBottom: SPACING.s,
+    gap: 4,
   },
-  articleCategoryBadge: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    paddingHorizontal: SPACING.s,
-    paddingVertical: SPACING.xxs,
-    borderRadius: RADIUS.xs,
-  },
-  articleCategoryText: {
+  metaTimeText: {
     color: COLORS.textSecondary,
+    fontSize: TYPOGRAPHY.fontSize.xs,
+    fontFamily: 'AtkinsonHyperlegible_400Regular',
+  },
+  vipBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.maize,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  vipBadgeText: {
+    color: COLORS.blue,
     fontSize: 9,
     fontFamily: 'Montserrat_700Bold',
     letterSpacing: 0.5,
   },
-  vipBadgeSmall: {
-    backgroundColor: COLORS.maize,
-    paddingHorizontal: SPACING.xs,
-    paddingVertical: 2,
-    borderRadius: RADIUS.xs,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  vipBadgeTextSmall: {
-    color: COLORS.blue,
-    fontSize: 8,
+  categoryLabel: {
+    color: COLORS.maize,
+    fontSize: TYPOGRAPHY.fontSize.xs,
     fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 1,
+    marginBottom: SPACING.xxs,
   },
-  articleTitle: {
+  storyTitle: {
     color: COLORS.text,
-    fontSize: TYPOGRAPHY.fontSize.md,
+    fontSize: TYPOGRAPHY.fontSize.xl,
     fontFamily: 'Montserrat_700Bold',
-    lineHeight: TYPOGRAPHY.fontSize.md * 1.3,
-    marginBottom: SPACING.xs,
+    lineHeight: 30,
+    marginBottom: SPACING.s,
   },
-  articleExcerpt: {
+  storyExcerpt: {
     color: COLORS.textSecondary,
-    fontSize: TYPOGRAPHY.fontSize.sm,
+    fontSize: TYPOGRAPHY.fontSize.base,
+    lineHeight: 21,
     fontFamily: 'AtkinsonHyperlegible_400Regular',
-    lineHeight: TYPOGRAPHY.fontSize.sm * 1.4,
     marginBottom: SPACING.m,
   },
-  articleFooter: {
+  storyFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  articleMeta: {
+  readMoreButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 5,
+    backgroundColor: COLORS.maize,
+    borderRadius: RADIUS.full,
+    paddingHorizontal: SPACING.m,
+    paddingVertical: 10,
   },
-  articleMetaText: {
-    color: COLORS.textTertiary,
-    fontSize: TYPOGRAPHY.fontSize.xs,
-    fontFamily: 'AtkinsonHyperlegible_400Regular',
+  readMoreText: {
+    color: COLORS.blue,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 0.4,
   },
-  articleMetaDot: {
-    color: COLORS.textTertiary,
-    marginHorizontal: SPACING.xs,
+  storyActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.s,
+  },
+  iconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: CHROME.surface.borderSoft,
+    backgroundColor: CHROME.surface.elevated,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

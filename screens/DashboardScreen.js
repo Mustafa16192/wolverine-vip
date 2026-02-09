@@ -12,7 +12,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../constants/theme';
+import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS, CHROME } from '../constants/theme';
+import AppBackground from '../components/chrome/AppBackground';
 import {
   ChevronRight,
   Zap,
@@ -23,6 +24,7 @@ import {
   Calendar,
   Clock,
   Route,
+  Shield,
   Trophy,
   Star,
   Cloud,
@@ -121,7 +123,7 @@ function toOpponentBadge(opponent = 'Opponent') {
 }
 
 export default function DashboardScreen({ navigation }) {
-  const { user, schedule, currentGame, nextGame, isGameDay, toggleMode } = useApp();
+  const { user, schedule, currentGame, nextGame, isGameDay, gameDayPhase, enterGameDay } = useApp();
 
   const [countdown, setCountdown] = useState({ days: 0, hours: 0, mins: 0, totalMs: 0 });
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -186,60 +188,259 @@ export default function DashboardScreen({ navigation }) {
     };
   }, [schedule]);
 
+  const opsContext = useMemo(() => {
+    const hoursToKickoff = (gameDate.getTime() - Date.now()) / (1000 * 60 * 60);
+    let stage = 'season';
+
+    if (isGameDay) {
+      stage = gameDayPhase || 'morning';
+    } else if (hoursToKickoff <= 7 && hoursToKickoff > 1.5) {
+      stage = 'travel';
+    } else if (hoursToKickoff <= 1.5 && hoursToKickoff > 0.5) {
+      stage = 'parking';
+    } else if (hoursToKickoff <= 0.5 && hoursToKickoff > 0) {
+      stage = 'pregame';
+    } else if (hoursToKickoff <= 0 && hoursToKickoff > -3.5) {
+      stage = 'ingame';
+    } else if (hoursToKickoff <= -3.5 && hoursToKickoff > -7) {
+      stage = 'postgame';
+    } else if (daysToGame <= 7) {
+      stage = 'morning';
+    }
+
+    const contextByStage = {
+      season: {
+        label: 'Season Planning',
+        priority: 'Keep logistics synced for the next home matchup.',
+      },
+      morning: {
+        label: 'Game Week Prep',
+        priority: 'Confirm permits, weather plan, and arrival window.',
+      },
+      tailgate: {
+        label: 'Tailgate Window',
+        priority: 'Align host timing and guest handoff details.',
+      },
+      travel: {
+        label: 'Travel Window',
+        priority: 'Optimize ETA and avoid route congestion.',
+      },
+      parking: {
+        label: 'Parking Priority',
+        priority: 'Guide arrival to the assigned lot and spot.',
+      },
+      pregame: {
+        label: 'Entry Priority',
+        priority: 'Move through the fastest gate lane to seats.',
+      },
+      ingame: {
+        label: 'In-Seat Support',
+        priority: 'Manage comfort, service, and live access windows.',
+      },
+      postgame: {
+        label: 'Exit Routing',
+        priority: 'Clear stadium and lot with minimal delays.',
+      },
+      home: {
+        label: 'Postgame Wrap',
+        priority: 'Log the day and prep the next game plan.',
+      },
+    };
+
+    return { stage, ...(contextByStage[stage] || contextByStage.season) };
+  }, [gameDate, isGameDay, gameDayPhase, daysToGame]);
+
   const liveOps = useMemo(() => {
-    const gameWeek = daysToGame <= 7;
-    const gameWindow = isGameDay || daysToGame <= 1;
+    const lot = user?.parking?.lot || 'Gold Lot A';
+    const spot = user?.parking?.spot || 'G-142';
+    const section = user?.seat?.section || '24';
+    const row = user?.seat?.row || '10';
+    const opponent = featuredGame?.opponent || 'Opponent';
+
+    const snapshots = {
+      season: {
+        parking: { value: `${lot} reserved`, detail: `Season permit active • Spot ${spot}` },
+        gate: { value: 'Credentials synced', detail: `VIP entry profile is ready for ${opponent}.` },
+        weather: { value: 'Monitoring', detail: 'Forecast watch starts automatically during game week.' },
+        walk: { value: `Sec ${section}, Row ${row}`, detail: 'Seat route saved and ready to launch.' },
+      },
+      morning: {
+        parking: { value: `${lot} confirmed`, detail: `Arrival window set • Spot ${spot}` },
+        gate: { value: 'Gate model pending', detail: 'Fast-lane prediction unlocks 24h before kickoff.' },
+        weather: { value: 'Low risk', detail: 'Pack a light layer for late wind shift.' },
+        walk: { value: 'Route preview', detail: `Primary path loaded for Section ${section}.` },
+      },
+      tailgate: {
+        parking: { value: `${lot} staging`, detail: `Host team monitoring entry to Spot ${spot}` },
+        gate: { value: 'Hospitality check', detail: 'Guest list synced with premium gate staff.' },
+        weather: { value: 'Comfortable', detail: 'No rain expected during tailgate window.' },
+        walk: { value: 'Concourse timing', detail: 'Route to suite recalculated every 5 minutes.' },
+      },
+      travel: {
+        parking: { value: `${lot} • ${spot}`, detail: 'Navigation optimized to current traffic flow.' },
+        gate: { value: 'Gate 40 ETA 9m', detail: 'South premium lane trending fastest right now.' },
+        weather: { value: '52°F • clear', detail: 'Stable conditions from arrival through kickoff.' },
+        walk: { value: '8 min walk', detail: `Recommended path to Section ${section} is clear.` },
+      },
+      parking: {
+        parking: { value: 'Lot arrival active', detail: `${lot} entry open • proceed to Spot ${spot}` },
+        gate: { value: 'Gate 40 ready', detail: 'Host greeting desk has your arrival alert.' },
+        weather: { value: '51°F • breeze', detail: 'Concourses are open if wind picks up.' },
+        walk: { value: '6 min to gate', detail: 'Blue route has lowest pedestrian load.' },
+      },
+      pregame: {
+        parking: { value: 'Vehicle secured', detail: `${lot} monitored • valet support available` },
+        gate: { value: 'Gate 40 • 5 min', detail: 'Premium lane currently moving without wait.' },
+        weather: { value: '50°F • clear', detail: 'No weather alerts before kickoff.' },
+        walk: { value: 'Seat route live', detail: `Best path to Section ${section} via east concourse.` },
+      },
+      ingame: {
+        parking: { value: 'Postgame route saved', detail: `Exit pattern preloaded for ${lot}` },
+        gate: { value: 'Re-entry active', detail: 'Suite and concourse access remain open.' },
+        weather: { value: '49°F • steady', detail: 'No weather impact expected through final whistle.' },
+        walk: { value: 'Concourse low traffic', detail: 'In-seat service path currently clear.' },
+      },
+      postgame: {
+        parking: { value: 'Exit lane open', detail: `${lot} egress moving at low delay` },
+        gate: { value: 'Gate 40 outbound', detail: 'Premium corridor is fastest for departure.' },
+        weather: { value: '47°F • clear', detail: 'Dry conditions for walk back to parking.' },
+        walk: { value: '5 min to vehicle', detail: `Staff escort available to Spot ${spot}.` },
+      },
+      home: {
+        parking: { value: 'Trip complete', detail: 'Parking and travel logs archived for this game.' },
+        gate: { value: 'Session closed', detail: 'Entry and hospitality timeline captured.' },
+        weather: { value: 'Archive synced', detail: 'Game-day weather notes added to your profile.' },
+        walk: { value: 'Next route pending', detail: `Section ${section} route will refresh next matchup.` },
+      },
+    };
+
+    const stageSnapshot = snapshots[opsContext.stage] || snapshots.season;
 
     return [
       {
         id: 'parking',
         icon: MapPin,
         title: 'Parking',
-        value: gameWindow ? 'Lot A Open' : user?.parking?.lot || 'Gold Lot A',
-        detail: gameWindow ? `Spot ${user?.parking?.spot || 'G-142'} • active guidance` : gameWeek ? 'Permit loaded for game week' : 'Reservation confirmed',
+        value: stageSnapshot.parking.value,
+        detail: stageSnapshot.parking.detail,
       },
       {
         id: 'gate',
         icon: Clock,
         title: 'Entry Gates',
-        value: gameWindow ? 'Gate 2 • 6 min' : 'Pre-check',
-        detail: gameWindow ? 'South entrance currently fastest' : gameWeek ? 'Predictions unlock 24h before kickoff' : 'No lines outside game windows',
+        value: stageSnapshot.gate.value,
+        detail: stageSnapshot.gate.detail,
       },
       {
         id: 'weather',
         icon: Cloud,
         title: 'Weather',
-        value: gameWindow ? '52°F • Clear' : gameWeek ? 'Low Risk' : 'Monitor',
-        detail: gameWindow ? 'Bring a light jacket for evening wind' : gameWeek ? 'No severe weather expected' : 'Forecast appears during game week',
+        value: stageSnapshot.weather.value,
+        detail: stageSnapshot.weather.detail,
       },
       {
         id: 'walk',
         icon: Route,
         title: 'Seat Route',
-        value: gameWindow ? '9 min walk' : 'Preview',
-        detail: `Section ${user?.seat?.section || '24'} via East Gate`,
+        value: stageSnapshot.walk.value,
+        detail: stageSnapshot.walk.detail,
       },
     ];
-  }, [daysToGame, isGameDay, user]);
+  }, [user, featuredGame?.opponent, opsContext.stage]);
+
+  const parkingInfo = useMemo(() => {
+    const lot = user?.parking?.lot || 'Gold Lot A';
+    const spot = user?.parking?.spot || 'G-142';
+    const row = spot.includes('-') ? spot.split('-')[0] : spot.charAt(0) || 'G';
+    const gameWindow = isGameDay || daysToGame <= 1;
+
+    return {
+      lot,
+      row,
+      spot,
+      permitId: `VIP-${row}-24`,
+      arrivalWindow: featuredGame.time ? `Arrive by ${featuredGame.time}` : 'Arrive 90m before kickoff',
+      attendant: gameWindow ? 'A. Thompson (Lot Host)' : 'Lot host assigned 24h before kickoff',
+    };
+  }, [user, isGameDay, daysToGame, featuredGame.time]);
+
+  const gateHandoff = useMemo(() => {
+    const gameWindow = isGameDay || daysToGame <= 1;
+    return {
+      gate: featuredGame.isHome ? 'Gate 40' : 'Visitor Premium Gate',
+      host: gameWindow ? 'Dana - Premium Entry Team' : 'Entry host assigned game morning',
+      routeHint: `From ${parkingInfo.lot}, follow Blue Route to VIP lane`,
+      welcomeKit: gameWindow ? 'Welcome bag pickup active at gate desk' : 'Welcome bag queued for game day',
+      eta: '7 min from your spot',
+    };
+  }, [featuredGame.isHome, parkingInfo.lot, isGameDay, daysToGame]);
+
+  const journeyPlan = useMemo(() => {
+    const minutesToKickoff = Math.round((gameDate.getTime() - Date.now()) / 60000);
+    const steps = [
+      { id: 'wake', time: '08:00', title: 'Wake-up briefing', detail: 'Weather, attire, and departure check' },
+      { id: 'travel', time: '09:45', title: 'Travel window', detail: 'Best route and congestion watch' },
+      { id: 'park', time: '10:40', title: 'Reserved parking', detail: `${parkingInfo.lot} • Spot ${parkingInfo.spot}` },
+      { id: 'gate', time: '11:00', title: 'Gate handoff', detail: `${gateHandoff.gate} host greeting` },
+      { id: 'field', time: '11:20', title: 'Field access', detail: 'Premium sideline pass window' },
+    ];
+
+    const thresholds = [360, 240, 140, 75, 40];
+    const planningMode = !isGameDay && daysToGame > 1;
+    let currentIndex = -1;
+
+    if (!planningMode) {
+      currentIndex = thresholds.findIndex((threshold, index) => {
+        const nextThreshold = thresholds[index + 1] ?? -100000;
+        return minutesToKickoff <= threshold && minutesToKickoff > nextThreshold;
+      });
+
+      if (currentIndex === -1) {
+        currentIndex = minutesToKickoff > thresholds[0] ? 0 : steps.length - 1;
+      }
+    }
+
+    return {
+      planningMode,
+      steps: steps.map((step, index) => {
+        let status = 'upcoming';
+        if (!planningMode) {
+          if (index < currentIndex) status = 'done';
+          if (index === currentIndex) status = 'current';
+        }
+        return { ...step, status };
+      }),
+    };
+  }, [gameDate, parkingInfo.lot, parkingInfo.spot, gateHandoff.gate, isGameDay, daysToGame]);
 
   const matchupLabel = currentGame ? "TODAY'S MATCHUP" : 'NEXT MATCHUP';
   const countdownChipText =
     countdown.totalMs > 0
       ? `Kickoff in ${countdown.days}d ${countdown.hours}h ${countdown.mins}m`
       : 'Kickoff window is active';
-  const modeCtaText = isGameDay ? 'RETURN TO SEASON VIEW' : 'ENTER GAME DAY PRIORITY';
+  const modeCtaText = 'Enter Game Day';
+  const launchJourneyWithIntent = (intent = 'journey') => {
+    enterGameDay({ intent });
+    navigation.navigate('GameDayHome');
+  };
+  const openLiveOpsDetail = (opId) => {
+    navigation.navigate('LiveOpsDetail', {
+      opId,
+      stage: opsContext.stage,
+      opponent: featuredGame.opponent,
+      kickoff: featuredGame.time,
+      isHome: featuredGame.isHome,
+    });
+  };
+
+  const handlePrimaryModeAction = () => {
+    launchJourneyWithIntent('journey');
+  };
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-
-      <LinearGradient
-        colors={['#000813', COLORS.blue, '#001530']}
-        locations={[0, 0.5, 1]}
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={styles.backdropGlowTop} />
-      <View style={styles.backdropGlowBottom} />
+      <AppBackground variant="home" />
 
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -318,7 +519,7 @@ export default function DashboardScreen({ navigation }) {
               <Text style={styles.countdownChipText}>{countdownChipText}</Text>
             </View>
 
-            <TouchableOpacity style={styles.primaryCta} onPress={toggleMode} activeOpacity={0.9}>
+            <TouchableOpacity style={styles.primaryCta} onPress={handlePrimaryModeAction} activeOpacity={0.9}>
               <LinearGradient
                 colors={[COLORS.maize, '#E7B600']}
                 start={{ x: 0, y: 0 }}
@@ -331,17 +532,6 @@ export default function DashboardScreen({ navigation }) {
                 <ChevronRight size={18} color={COLORS.blue} />
               </View>
             </TouchableOpacity>
-
-            {isGameDay && (
-              <TouchableOpacity
-                style={styles.secondaryCta}
-                activeOpacity={0.85}
-                onPress={() => navigation.navigate('GameDayHome')}
-              >
-                <Text style={styles.secondaryCtaText}>Open Full Game Day Journey</Text>
-                <ChevronRight size={16} color={COLORS.maize} />
-              </TouchableOpacity>
-            )}
           </View>
 
           <View style={styles.progressCard}>
@@ -383,12 +573,21 @@ export default function DashboardScreen({ navigation }) {
             </Text>
           </View>
 
-          <Text style={styles.sectionTitle}>{isGameDay ? 'LIVE OPS NOW' : 'LIVE OPS'}</Text>
+          <View style={styles.liveOpsHeader}>
+            <Text style={[styles.sectionTitle, styles.liveOpsTitle]}>LIVE OPS</Text>
+            <Text style={styles.liveOpsStage}>{opsContext.label}</Text>
+          </View>
+          <Text style={styles.liveOpsPriority}>{opsContext.priority}</Text>
           <View style={styles.opsGrid}>
             {liveOps.map(item => {
               const Icon = item.icon;
               return (
-                <View key={item.id} style={styles.opsCard}>
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.opsCard}
+                  activeOpacity={0.9}
+                  onPress={() => openLiveOpsDetail(item.id)}
+                >
                   <BlurView intensity={18} tint="dark" style={StyleSheet.absoluteFill} />
                   <View style={styles.opsTopRow}>
                     <View style={styles.opsIconWrap}>
@@ -403,19 +602,148 @@ export default function DashboardScreen({ navigation }) {
                   <Text style={styles.opsTitle}>{item.title}</Text>
                   <Text style={styles.opsValue}>{item.value}</Text>
                   <Text style={styles.opsDetail}>{item.detail}</Text>
-                </View>
+                  <View style={styles.opsFooterRow}>
+                    <Text style={styles.opsCta}>Open</Text>
+                    <ChevronRight size={14} color={COLORS.maize} />
+                  </View>
+                </TouchableOpacity>
               );
             })}
           </View>
 
-          <Text style={styles.sectionTitle}>CONCIERGE ACTIONS</Text>
+          <Text style={styles.sectionTitle}>VIP CONCIERGE</Text>
+          <View style={styles.conciergeStack}>
+            <View style={styles.conciergeCard}>
+              <BlurView intensity={22} tint="dark" style={StyleSheet.absoluteFill} />
+              <View style={styles.conciergeHeaderRow}>
+                <View style={styles.conciergeIconWrap}>
+                  <MapPin size={16} color={COLORS.maize} />
+                </View>
+                <Text style={styles.conciergeTitle}>Parking Concierge</Text>
+              </View>
+
+              <View style={styles.conciergeMetaRow}>
+                <Text style={styles.conciergeMetaLabel}>LOT</Text>
+                <Text style={styles.conciergeMetaValue}>{parkingInfo.lot}</Text>
+              </View>
+              <View style={styles.conciergeMetaRow}>
+                <Text style={styles.conciergeMetaLabel}>SPOT</Text>
+                <Text style={styles.conciergeMetaValue}>{parkingInfo.spot}</Text>
+              </View>
+              <View style={styles.conciergeMetaRow}>
+                <Text style={styles.conciergeMetaLabel}>PERMIT</Text>
+                <Text style={styles.conciergeMetaValue}>{parkingInfo.permitId}</Text>
+              </View>
+              <Text style={styles.conciergeHint}>{parkingInfo.arrivalWindow}</Text>
+              <Text style={styles.conciergeHint}>{parkingInfo.attendant}</Text>
+
+              <TouchableOpacity
+                style={styles.conciergeAction}
+                activeOpacity={0.85}
+                onPress={() => launchJourneyWithIntent('parking')}
+              >
+                <Text style={styles.conciergeActionText}>Open Parking Guidance</Text>
+                <ChevronRight size={16} color={COLORS.maize} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.conciergeCard}>
+              <BlurView intensity={22} tint="dark" style={StyleSheet.absoluteFill} />
+              <View style={styles.conciergeHeaderRow}>
+                <View style={styles.conciergeIconWrap}>
+                  <Shield size={16} color={COLORS.maize} />
+                </View>
+                <Text style={styles.conciergeTitle}>Gate Handoff</Text>
+              </View>
+
+              <View style={styles.conciergeMetaRow}>
+                <Text style={styles.conciergeMetaLabel}>ENTRY</Text>
+                <Text style={styles.conciergeMetaValue}>{gateHandoff.gate}</Text>
+              </View>
+              <View style={styles.conciergeMetaRow}>
+                <Text style={styles.conciergeMetaLabel}>HOST</Text>
+                <Text style={styles.conciergeMetaValue}>{gateHandoff.host}</Text>
+              </View>
+              <View style={styles.conciergeMetaRow}>
+                <Text style={styles.conciergeMetaLabel}>ETA</Text>
+                <Text style={styles.conciergeMetaValue}>{gateHandoff.eta}</Text>
+              </View>
+              <Text style={styles.conciergeHint}>{gateHandoff.routeHint}</Text>
+              <Text style={styles.conciergeHint}>{gateHandoff.welcomeKit}</Text>
+
+              <TouchableOpacity
+                style={styles.conciergeAction}
+                activeOpacity={0.85}
+                onPress={() => navigation.navigate('Ticket')}
+              >
+                <Text style={styles.conciergeActionText}>Open Entry Pass</Text>
+                <ChevronRight size={16} color={COLORS.maize} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <Text style={styles.sectionTitle}>TODAY JOURNEY</Text>
+          <View style={styles.timelineCard}>
+            <BlurView intensity={18} tint="dark" style={StyleSheet.absoluteFill} />
+            {journeyPlan.planningMode && (
+              <Text style={styles.timelinePlanningHint}>
+                Timeline unlocks in detail on game day. Your itinerary is staged.
+              </Text>
+            )}
+            {journeyPlan.steps.map((step, index) => (
+              <View
+                key={step.id}
+                style={[
+                  styles.timelineRow,
+                  index === journeyPlan.steps.length - 1 && styles.timelineRowLast,
+                ]}
+              >
+                <View style={styles.timelineRail}>
+                  <View
+                    style={[
+                      styles.timelineDot,
+                      step.status === 'done' && styles.timelineDotDone,
+                      step.status === 'current' && styles.timelineDotCurrent,
+                    ]}
+                  />
+                  {index < journeyPlan.steps.length - 1 && (
+                    <View
+                      style={[
+                        styles.timelineConnector,
+                        step.status === 'done' && styles.timelineConnectorDone,
+                      ]}
+                    />
+                  )}
+                </View>
+
+                <View style={styles.timelineContent}>
+                  <View style={styles.timelineHeader}>
+                    <Text style={styles.timelineTime}>{step.time}</Text>
+                    <Text
+                      style={[
+                        styles.timelineStatus,
+                        step.status === 'done' && styles.timelineStatusDone,
+                        step.status === 'current' && styles.timelineStatusCurrent,
+                      ]}
+                    >
+                      {step.status === 'done' ? 'Done' : step.status === 'current' ? 'Current' : 'Upcoming'}
+                    </Text>
+                  </View>
+                  <Text style={styles.timelineTitle}>{step.title}</Text>
+                  <Text style={styles.timelineDetail}>{step.detail}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+
+          <Text style={styles.sectionTitle}>QUICK ACTIONS</Text>
           <View style={styles.actionRow}>
             <ActionPill icon={Ticket} label="Scan Ticket" onPress={() => navigation.navigate('Ticket')} />
             <ActionPill icon={Utensils} label="Order Food" onPress={() => navigation.navigate('Ticket')} />
             <ActionPill
               icon={Route}
-              label={isGameDay ? 'Journey' : 'Route'}
-              onPress={() => (isGameDay ? navigation.navigate('GameDayHome') : toggleMode())}
+              label={isGameDay ? 'Travel' : 'Route'}
+              onPress={() => launchJourneyWithIntent('travel')}
             />
             <ActionPill icon={Share2} label="Guest Pass" onPress={() => navigation.navigate('News')} />
           </View>
@@ -516,24 +844,6 @@ const styles = StyleSheet.create({
     paddingTop: SPACING.s,
     paddingBottom: 116,
   },
-  backdropGlowTop: {
-    position: 'absolute',
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    backgroundColor: 'rgba(46, 91, 255, 0.18)',
-    top: -90,
-    right: -80,
-  },
-  backdropGlowBottom: {
-    position: 'absolute',
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    backgroundColor: 'rgba(255, 203, 5, 0.08)',
-    bottom: -80,
-    left: -110,
-  },
 
   header: {
     alignItems: 'flex-start',
@@ -568,7 +878,8 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.xl,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: CHROME.surface.border,
+    backgroundColor: CHROME.surface.base,
     padding: SPACING.l,
     marginBottom: SPACING.m,
     ...SHADOWS.lg,
@@ -599,11 +910,11 @@ const styles = StyleSheet.create({
   matchupGraphic: {
     borderRadius: RADIUS.lg,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: CHROME.surface.borderSoft,
     paddingVertical: SPACING.m,
     paddingHorizontal: SPACING.s,
     marginBottom: SPACING.s,
-    backgroundColor: 'rgba(0,0,0,0.26)',
+    backgroundColor: CHROME.surface.elevated,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -677,9 +988,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(0,0,0,0.30)',
+    backgroundColor: CHROME.surface.base,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: CHROME.surface.borderSoft,
     borderRadius: RADIUS.full,
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -693,9 +1004,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: 'rgba(0,0,0,0.38)',
+    backgroundColor: CHROME.surface.elevated,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: CHROME.surface.border,
     borderRadius: RADIUS.full,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -724,25 +1035,12 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat_700Bold',
     letterSpacing: 1,
   },
-  secondaryCta: {
-    marginTop: SPACING.s,
-    paddingHorizontal: SPACING.s,
-    paddingVertical: SPACING.xs,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  secondaryCtaText: {
-    color: COLORS.maize,
-    fontSize: TYPOGRAPHY.fontSize.sm,
-    fontFamily: 'Montserrat_600SemiBold',
-  },
-
   progressCard: {
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.11)',
+    borderColor: CHROME.surface.border,
+    backgroundColor: CHROME.surface.base,
     padding: SPACING.m,
     marginBottom: SPACING.m,
   },
@@ -820,6 +1118,28 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.s,
     marginTop: SPACING.xs,
   },
+  liveOpsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  liveOpsTitle: {
+    marginBottom: 0,
+  },
+  liveOpsStage: {
+    color: COLORS.maize,
+    fontSize: 10,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 0.8,
+  },
+  liveOpsPriority: {
+    color: COLORS.textTertiary,
+    fontSize: 11,
+    lineHeight: 16,
+    fontFamily: 'AtkinsonHyperlegible_400Regular',
+    marginTop: 4,
+    marginBottom: SPACING.s,
+  },
 
   opsGrid: {
     flexDirection: 'row',
@@ -832,7 +1152,8 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: CHROME.surface.borderSoft,
+    backgroundColor: CHROME.surface.base,
     padding: SPACING.s,
   },
   opsTopRow: {
@@ -868,6 +1189,182 @@ const styles = StyleSheet.create({
     lineHeight: 15,
     fontFamily: 'AtkinsonHyperlegible_400Regular',
   },
+  opsFooterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 4,
+    marginTop: 8,
+  },
+  opsCta: {
+    color: COLORS.maize,
+    fontSize: TYPOGRAPHY.fontSize.xs,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 0.5,
+  },
+
+  conciergeStack: {
+    gap: SPACING.s,
+    marginBottom: SPACING.m,
+  },
+  conciergeCard: {
+    borderRadius: RADIUS.md,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: CHROME.surface.border,
+    backgroundColor: CHROME.surface.base,
+    padding: SPACING.s,
+  },
+  conciergeHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  conciergeIconWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(255,203,5,0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  conciergeTitle: {
+    color: COLORS.text,
+    fontSize: TYPOGRAPHY.fontSize.md,
+    fontFamily: 'Montserrat_700Bold',
+  },
+  conciergeMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  conciergeMetaLabel: {
+    color: COLORS.textTertiary,
+    fontSize: TYPOGRAPHY.fontSize.xs,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 0.8,
+  },
+  conciergeMetaValue: {
+    color: COLORS.text,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    fontFamily: 'AtkinsonHyperlegible_700Bold',
+    textAlign: 'right',
+    flex: 1,
+    marginLeft: SPACING.s,
+  },
+  conciergeHint: {
+    color: COLORS.textSecondary,
+    fontSize: TYPOGRAPHY.fontSize.xs,
+    lineHeight: 16,
+    fontFamily: 'AtkinsonHyperlegible_400Regular',
+    marginTop: 3,
+  },
+  conciergeAction: {
+    marginTop: SPACING.s,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.12)',
+    paddingTop: 10,
+  },
+  conciergeActionText: {
+    color: COLORS.maize,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    fontFamily: 'Montserrat_700Bold',
+  },
+
+  timelineCard: {
+    borderRadius: RADIUS.md,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: CHROME.surface.borderSoft,
+    backgroundColor: CHROME.surface.base,
+    paddingHorizontal: SPACING.s,
+    paddingVertical: SPACING.s,
+    marginBottom: SPACING.m,
+  },
+  timelinePlanningHint: {
+    color: COLORS.textSecondary,
+    fontSize: TYPOGRAPHY.fontSize.xs,
+    fontFamily: 'AtkinsonHyperlegible_400Regular',
+    marginBottom: SPACING.s,
+  },
+  timelineRow: {
+    flexDirection: 'row',
+    marginBottom: SPACING.s,
+  },
+  timelineRowLast: {
+    marginBottom: 0,
+  },
+  timelineRail: {
+    width: 24,
+    alignItems: 'center',
+    marginRight: 4,
+  },
+  timelineDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: 'rgba(255,255,255,0.34)',
+    marginTop: 4,
+  },
+  timelineDotDone: {
+    backgroundColor: '#38A169',
+  },
+  timelineDotCurrent: {
+    backgroundColor: COLORS.maize,
+  },
+  timelineConnector: {
+    width: 1,
+    flex: 1,
+    marginTop: 4,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  timelineConnectorDone: {
+    backgroundColor: 'rgba(56,161,105,0.7)',
+  },
+  timelineContent: {
+    flex: 1,
+    paddingBottom: 2,
+  },
+  timelineHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  timelineTime: {
+    color: COLORS.textTertiary,
+    fontSize: TYPOGRAPHY.fontSize.xs,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 0.7,
+  },
+  timelineStatus: {
+    color: COLORS.textSecondary,
+    fontSize: 11,
+    fontFamily: 'Montserrat_600SemiBold',
+  },
+  timelineStatusDone: {
+    color: '#38A169',
+  },
+  timelineStatusCurrent: {
+    color: COLORS.maize,
+  },
+  timelineTitle: {
+    color: COLORS.text,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    fontFamily: 'Montserrat_700Bold',
+    marginBottom: 2,
+  },
+  timelineDetail: {
+    color: COLORS.textSecondary,
+    fontSize: TYPOGRAPHY.fontSize.xs,
+    lineHeight: 16,
+    fontFamily: 'AtkinsonHyperlegible_400Regular',
+  },
 
   actionRow: {
     flexDirection: 'row',
@@ -880,9 +1377,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     borderRadius: RADIUS.full,
-    backgroundColor: 'rgba(0,0,0,0.36)',
+    backgroundColor: CHROME.surface.elevated,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: CHROME.surface.borderSoft,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
@@ -896,7 +1393,8 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: CHROME.surface.border,
+    backgroundColor: CHROME.surface.base,
     padding: SPACING.m,
     marginBottom: SPACING.m,
   },
@@ -937,9 +1435,9 @@ const styles = StyleSheet.create({
   legacyStatCard: {
     width: '48.7%',
     borderRadius: RADIUS.md,
-    backgroundColor: 'rgba(0,0,0,0.28)',
+    backgroundColor: CHROME.surface.elevated,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: CHROME.surface.borderSoft,
     padding: SPACING.s,
   },
   legacyStatValue: {
@@ -962,7 +1460,8 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: CHROME.surface.borderSoft,
+    backgroundColor: CHROME.surface.base,
     minHeight: 248,
   },
   feedImageWrap: {

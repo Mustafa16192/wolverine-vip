@@ -21,6 +21,7 @@ import {
   Star,
 } from 'lucide-react-native';
 import { useApp } from '../../context/AppContext';
+import AppBackground from '../../components/chrome/AppBackground';
 
 /**
  * HomePhase - Journey Home
@@ -44,7 +45,7 @@ export default function HomePhase({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: COLORS.blue }]} />
+      <AppBackground variant="gameDay" />
 
       <SafeAreaView style={styles.safeArea}>
         {/* Header */}

@@ -20,6 +20,7 @@ import {
   Car,
 } from 'lucide-react-native';
 import { useApp } from '../../context/AppContext';
+import AppBackground from '../../components/chrome/AppBackground';
 
 /**
  * ParkingPhase - Find Your Spot
@@ -37,7 +38,7 @@ export default function ParkingPhase({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: COLORS.blue }]} />
+      <AppBackground variant="gameDay" />
 
       <SafeAreaView style={styles.safeArea}>
         {/* Header */}

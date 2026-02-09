@@ -21,6 +21,7 @@ import {
   TrendingUp,
 } from 'lucide-react-native';
 import { useApp } from '../../context/AppContext';
+import AppBackground from '../../components/chrome/AppBackground';
 
 /**
  * PostgamePhase - Celebrate the Win
@@ -62,7 +63,7 @@ export default function PostgamePhase({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: COLORS.blue }]} />
+      <AppBackground variant="gameDay" />
 
       <SafeAreaView style={styles.safeArea}>
         {/* Header */}
