@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { COLORS, SPACING } from '../constants/theme';
-import { BlurView } from 'expo-blur';
 import { RotateCcw, Play, Pause } from 'lucide-react-native';
 import { useGame } from '../context/GameContext';
 
@@ -27,7 +26,7 @@ export default function SimulatorControls() {
   };
 
   return (
-    <BlurView intensity={30} tint="dark" style={styles.container}>
+    <View style={styles.container}>
       {/* Time Display */}
       <View style={styles.topRow}>
         <Text style={styles.timeDisplay}>{formatTimeDisplay()}</Text>
@@ -104,21 +103,28 @@ export default function SimulatorControls() {
           ))}
         </View>
       </ScrollView>
-    </BlurView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+    bottom: 90, // Position above the tab bar
+    left: SPACING.m,
+    right: SPACING.m,
+    borderRadius: 16,
     paddingTop: 12,
-    paddingBottom: 8,
+    paddingBottom: 12,
     paddingHorizontal: SPACING.m,
-    borderTopWidth: 1,
+    backgroundColor: '#00274C', // Solid Blue
+    borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.15)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 8,
   },
   topRow: {
     flexDirection: 'row',

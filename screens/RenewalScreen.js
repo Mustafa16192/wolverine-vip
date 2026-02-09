@@ -82,12 +82,8 @@ export default function RenewalScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
 
-      {/* Background */}
-      <LinearGradient
-        colors={['#001428', COLORS.blue, '#000B14']}
-        locations={[0, 0.4, 1]}
-        style={StyleSheet.absoluteFill}
-      />
+      {/* Background - using only official U-M Blue */}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: COLORS.blue }]} />
 
       {/* Decorative background elements */}
       <View style={styles.bgDecoration}>
@@ -199,7 +195,7 @@ export default function RenewalScreen() {
                 ]}
               >
                 <LinearGradient
-                  colors={[COLORS.maize, '#E5B700']}
+                  colors={[COLORS.maize, COLORS.maize]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={StyleSheet.absoluteFill}

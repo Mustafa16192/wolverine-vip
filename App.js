@@ -1,12 +1,12 @@
 import 'react-native-gesture-handler';
 import React from 'react';
-import { View, ActivityIndicator, Platform } from 'react-native';
+import { View, ActivityIndicator, Platform, Text, StyleSheet } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { COLORS, TYPOGRAPHY, LAYOUT, SPACING, RADIUS } from './constants/theme';
-import { Home, Ticket, Trophy } from 'lucide-react-native';
+import { createStackNavigator } from '@react-navigation/stack';
+import { COLORS, TYPOGRAPHY, SPACING } from './constants/theme';
+import { Home, BarChart3, Newspaper, ShoppingBag, Ticket, Zap } from 'lucide-react-native';
 import { StatusBar } from 'expo-status-bar';
-import { BlurView } from 'expo-blur';
 import {
   useFonts,
   AtkinsonHyperlegible_400Regular,
@@ -17,12 +17,36 @@ import {
   Montserrat_700Bold
 } from '@expo-google-fonts/montserrat';
 
-// Screens
+// Context
+import { AppProvider, useApp } from './context/AppContext';
+import { GameProvider } from './context/GameContext';
+
+// Screens - Launcher
+import LauncherScreen from './screens/LauncherScreen';
+
+// Non-Game Day Screens
 import DashboardScreen from './screens/DashboardScreen';
+import StatsScreen from './screens/StatsScreen';
+import NewsScreen from './screens/NewsScreen';
+import ShopScreen from './screens/ShopScreen';
+
+// Shared Screens
 import TicketScreen from './screens/TicketScreen';
-import RenewalScreen from './screens/RenewalScreen';
+
+// Game Day Screens
+import GameDayHomeScreen from './screens/gameday/GameDayHomeScreen';
+import MorningPhase from './screens/gameday/MorningPhase';
+import TailgatePhase from './screens/gameday/TailgatePhase';
+import TravelPhase from './screens/gameday/TravelPhase';
+import ParkingPhase from './screens/gameday/ParkingPhase';
+import PregamePhase from './screens/gameday/PregamePhase';
+import IngamePhase from './screens/gameday/IngamePhase';
+import PostgamePhase from './screens/gameday/PostgamePhase';
+import HomePhase from './screens/gameday/HomePhase';
 
 const Tab = createBottomTabNavigator();
+const Stack = createStackNavigator();
+const RootStack = createStackNavigator();
 
 /**
  * Navigation Theme
@@ -42,25 +66,131 @@ const NavTheme = {
 };
 
 /**
- * Custom Tab Bar Background
- * Glassmorphic blur effect for premium feel
+ * Non-Game Day Tab Navigator
+ * Bento-style dashboard experience
  */
-function TabBarBackground() {
+function NonGameDayTabs() {
   return (
-    <BlurView
-      intensity={50}
-      tint="dark"
-      style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: COLORS.blue,
+          borderTopWidth: 2,
+          borderTopColor: COLORS.maize,
+          height: Platform.OS === 'ios' ? 85 : 65,
+          paddingTop: 8,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+          elevation: 0,
+          shadowOpacity: 0,
+        },
+        tabBarActiveTintColor: COLORS.maize,
+        tabBarInactiveTintColor: 'rgba(255,255,255,0.5)',
+        tabBarLabelStyle: {
+          fontFamily: 'Montserrat_700Bold',
+          fontSize: 9,
+          letterSpacing: 1,
+          marginTop: 2,
+        },
+        tabBarIconStyle: {
+          marginTop: 2,
+        },
       }}
-    />
+    >
+      <Tab.Screen
+        name="Home"
+        component={DashboardScreen}
+        options={{
+          tabBarIcon: ({ color, focused }) => (
+            <Home color={color} size={24} strokeWidth={focused ? 2.5 : 2} />
+          ),
+          tabBarLabel: 'HOME',
+        }}
+      />
+      <Tab.Screen
+        name="Stats"
+        component={StatsScreen}
+        options={{
+          tabBarIcon: ({ color, focused }) => (
+            <BarChart3 color={color} size={24} strokeWidth={focused ? 2.5 : 2} />
+          ),
+          tabBarLabel: 'STATS',
+        }}
+      />
+      <Tab.Screen
+        name="Ticket"
+        component={TicketScreen}
+        options={{
+          tabBarIcon: ({ color, focused }) => (
+            <Ticket color={color} size={24} strokeWidth={focused ? 2.5 : 2} />
+          ),
+          tabBarLabel: 'TICKET',
+        }}
+      />
+      <Tab.Screen
+        name="News"
+        component={NewsScreen}
+        options={{
+          tabBarIcon: ({ color, focused }) => (
+            <Newspaper color={color} size={24} strokeWidth={focused ? 2.5 : 2} />
+          ),
+          tabBarLabel: 'NEWS',
+        }}
+      />
+      <Tab.Screen
+        name="Shop"
+        component={ShopScreen}
+        options={{
+          tabBarIcon: ({ color, focused }) => (
+            <ShoppingBag color={color} size={24} strokeWidth={focused ? 2.5 : 2} />
+          ),
+          tabBarLabel: 'SHOP',
+        }}
+      />
+    </Tab.Navigator>
   );
 }
 
+/**
+ * Game Day Stack Navigator
+ * Full end-to-end game day experience
+ */
+function GameDayNavigator() {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        cardStyle: { backgroundColor: COLORS.blue },
+        gestureEnabled: true,
+        animationEnabled: true,
+      }}
+    >
+      <Stack.Screen name="GameDayHome" component={GameDayHomeScreen} />
+      <Stack.Screen name="MorningPhase" component={MorningPhase} />
+      <Stack.Screen name="TailgatePhase" component={TailgatePhase} />
+      <Stack.Screen name="TravelPhase" component={TravelPhase} />
+      <Stack.Screen name="ParkingPhase" component={ParkingPhase} />
+      <Stack.Screen name="PregamePhase" component={PregamePhase} />
+      <Stack.Screen name="IngamePhase" component={IngamePhase} />
+      <Stack.Screen name="PostgamePhase" component={PostgamePhase} />
+      <Stack.Screen name="HomePhase" component={HomePhase} />
+      <Stack.Screen name="GameDayTicket" component={TicketScreen} />
+    </Stack.Navigator>
+  );
+}
+
+/**
+ * Main App Navigator (The "Working" Prototype)
+ * Switches between Game Day and Non-Game Day modes
+ */
+function MainAppNavigator() {
+  const { isGameDay } = useApp();
+  return isGameDay ? <GameDayNavigator /> : <NonGameDayTabs />;
+}
+
+/**
+ * Root App Component
+ */
 export default function App() {
   let [fontsLoaded] = useFonts({
     AtkinsonHyperlegible_400Regular,
@@ -71,106 +201,32 @@ export default function App() {
 
   if (!fontsLoaded) {
     return (
-      <View style={{
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: COLORS.blue
-      }}>
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={COLORS.maize} />
       </View>
     );
   }
 
   return (
-    <NavigationContainer theme={NavTheme}>
-      <StatusBar style="light" />
-      <Tab.Navigator
-        screenOptions={{
-          headerShown: false,
-          tabBarStyle: {
-            position: 'absolute',
-            backgroundColor: 'rgba(0, 39, 76, 0.95)',
-            borderTopWidth: 1,
-            borderTopColor: 'rgba(255, 203, 5, 0.15)',
-            height: Platform.OS === 'ios' ? 88 : 70,
-            paddingTop: SPACING.s,
-            paddingBottom: Platform.OS === 'ios' ? 28 : SPACING.s,
-            paddingHorizontal: SPACING.m,
-          },
-          tabBarBackground: () => <TabBarBackground />,
-          tabBarActiveTintColor: COLORS.maize,
-          tabBarInactiveTintColor: COLORS.textTertiary,
-          tabBarLabelStyle: {
-            fontFamily: 'Montserrat_700Bold',
-            fontSize: 10,
-            letterSpacing: 0.5,
-            marginTop: SPACING.xxs,
-          },
-          tabBarItemStyle: {
-            paddingVertical: SPACING.xs,
-          },
-        }}
-      >
-        <Tab.Screen
-          name="Dashboard"
-          component={DashboardScreen}
-          options={{
-            tabBarIcon: ({ color, focused }) => (
-              <View style={{
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 44,
-                height: 32,
-                borderRadius: 16,
-                backgroundColor: focused ? 'rgba(255, 203, 5, 0.15)' : 'transparent',
-              }}>
-                <Home color={color} size={22} strokeWidth={focused ? 2.5 : 2} />
-              </View>
-            ),
-            tabBarLabel: 'HOME',
-          }}
-        />
-        <Tab.Screen
-          name="Ticket"
-          component={TicketScreen}
-          options={{
-            tabBarIcon: ({ color, focused }) => (
-              <View style={{
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 44,
-                height: 32,
-                borderRadius: 16,
-                backgroundColor: focused ? 'rgba(255, 203, 5, 0.15)' : 'transparent',
-              }}>
-                <Ticket color={color} size={22} strokeWidth={focused ? 2.5 : 2} />
-              </View>
-            ),
-            tabBarLabel: 'TICKET',
-            tabBarStyle: { display: 'none' }, // Hide tab bar on ticket screen for immersive view
-          }}
-        />
-        <Tab.Screen
-          name="Legacy"
-          component={RenewalScreen}
-          options={{
-            tabBarIcon: ({ color, focused }) => (
-              <View style={{
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 44,
-                height: 32,
-                borderRadius: 16,
-                backgroundColor: focused ? 'rgba(255, 203, 5, 0.15)' : 'transparent',
-              }}>
-                <Trophy color={color} size={22} strokeWidth={focused ? 2.5 : 2} />
-              </View>
-            ),
-            tabBarLabel: 'LEGACY',
-          }}
-        />
-      </Tab.Navigator>
-    </NavigationContainer>
+    <AppProvider>
+      <GameProvider>
+        <NavigationContainer theme={NavTheme}>
+          <StatusBar style="light" />
+          <RootStack.Navigator screenOptions={{ headerShown: false }}>
+            <RootStack.Screen name="Launcher" component={LauncherScreen} />
+            <RootStack.Screen name="MainApp" component={MainAppNavigator} />
+          </RootStack.Navigator>
+        </NavigationContainer>
+      </GameProvider>
+    </AppProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.blue,
+  },
+});

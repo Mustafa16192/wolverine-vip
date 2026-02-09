@@ -15,6 +15,7 @@ import { COLORS, SPACING, SHADOWS, TYPOGRAPHY, RADIUS } from '../constants/theme
 import { QrCode, MapPin, Utensils, ArrowLeft, Sparkles, Shield } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { useApp } from '../context/AppContext';
 
 const { width, height } = Dimensions.get('window');
 const CARD_WIDTH = width - SPACING.l * 2;
@@ -28,6 +29,7 @@ const CARD_HEIGHT = 420;
  */
 
 export default function TicketScreen({ navigation }) {
+  const { user } = useApp();
   const [isFlipped, setIsFlipped] = useState(false);
   const flipAnim = useRef(new Animated.Value(0)).current;
   const shimmerAnim = useRef(new Animated.Value(0)).current;
@@ -76,23 +78,13 @@ export default function TicketScreen({ navigation }) {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
 
-      {/* Background */}
-      <LinearGradient
-        colors={['#001428', COLORS.blue, '#000B14']}
-        locations={[0, 0.5, 1]}
-        style={StyleSheet.absoluteFill}
-      />
+      {/* Background - using only official U-M Blue */}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: COLORS.blue }]} />
 
       <SafeAreaView style={styles.safeArea}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
-            activeOpacity={0.7}
-          >
-            <ArrowLeft color={COLORS.text} size={24} />
-          </TouchableOpacity>
+          <View style={{ width: 44 }} />
           <View style={styles.headerCenter}>
             <Shield size={16} color={COLORS.maize} />
             <Text style={styles.headerTitle}>SEAT COMMAND</Text>
@@ -120,7 +112,7 @@ export default function TicketScreen({ navigation }) {
                 ]}
               >
                 <LinearGradient
-                  colors={[COLORS.blue, '#001020', '#000810']}
+                  colors={[COLORS.blue, 'rgba(0,39,76,0.95)', 'rgba(0,39,76,0.9)']}
                   locations={[0, 0.6, 1]}
                   style={StyleSheet.absoluteFill}
                 />
@@ -152,7 +144,7 @@ export default function TicketScreen({ navigation }) {
                       <Text style={styles.passType}>VIP PASS</Text>
                     </View>
                     <Image
-                      source={require('../assets/um-logo-blue.png')}
+                      source={require('../assets/um-logo-outlined.png')}
                       style={styles.cardLogo}
                     />
                   </View>
@@ -161,17 +153,17 @@ export default function TicketScreen({ navigation }) {
                   <View style={styles.seatGrid}>
                     <View style={styles.seatItem}>
                       <Text style={styles.seatLabel}>SECTION</Text>
-                      <Text style={styles.seatValue}>24</Text>
+                      <Text style={styles.seatValue}>{user.seat.section}</Text>
                     </View>
                     <View style={styles.seatDivider} />
                     <View style={styles.seatItem}>
                       <Text style={styles.seatLabel}>ROW</Text>
-                      <Text style={styles.seatValue}>10</Text>
+                      <Text style={styles.seatValue}>{user.seat.row}</Text>
                     </View>
                     <View style={styles.seatDivider} />
                     <View style={styles.seatItem}>
                       <Text style={styles.seatLabel}>SEAT</Text>
-                      <Text style={styles.seatValue}>4</Text>
+                      <Text style={styles.seatValue}>{user.seat.seat}</Text>
                     </View>
                   </View>
 
@@ -180,7 +172,7 @@ export default function TicketScreen({ navigation }) {
                     <View style={styles.holderRow}>
                       <View>
                         <Text style={styles.holderLabel}>TICKET HOLDER</Text>
-                        <Text style={styles.holderName}>MUSTAFA</Text>
+                        <Text style={styles.holderName}>{user.name.toUpperCase()}</Text>
                       </View>
                       <View style={styles.verifiedBadge}>
                         <Sparkles size={12} color={COLORS.blue} />
@@ -209,7 +201,7 @@ export default function TicketScreen({ navigation }) {
                 ]}
               >
                 <LinearGradient
-                  colors={[COLORS.maize, '#E5B700', '#D4A800']}
+                  colors={[COLORS.maize, COLORS.maize, 'rgba(255,203,5,0.95)']}
                   style={StyleSheet.absoluteFill}
                 />
 
@@ -257,7 +249,7 @@ export default function TicketScreen({ navigation }) {
                 <MapPin size={24} color={COLORS.maize} />
               </View>
               <Text style={styles.actionTitle}>Directions</Text>
-              <Text style={styles.actionSubtitle}>To Section 24</Text>
+              <Text style={styles.actionSubtitle}>To Section {user.seat.section}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -363,8 +355,8 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xxs,
   },
   cardLogo: {
-    width: 50,
-    height: 50,
+    width: 56,
+    height: 56,
     resizeMode: 'contain',
   },
 

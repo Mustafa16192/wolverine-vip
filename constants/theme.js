@@ -37,7 +37,7 @@ export const COLORS = {
   // Text Colors (WCAG AA compliant on dark backgrounds)
   text: '#FFFFFF',              // Primary text - 15.75:1 contrast ratio on blue
   textSecondary: '#B8B8B8',     // Secondary text - 7.5:1 contrast ratio on blue
-  textTertiary: '#8C8C8C',      // Tertiary text - 4.5:1 contrast ratio on blue
+  textTertiary: '#A0A0A0',      // Tertiary text - 5.2:1 contrast ratio on blue (improved)
 
   // Borders & Dividers
   border: 'rgba(255, 255, 255, 0.1)',
