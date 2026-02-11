@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   Animated,
   Image,
+  ImageBackground,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -79,6 +80,9 @@ const INSIDER_ITEMS = [
     target: 'Shop',
   },
 ];
+
+const MATCHUP_GRAPHIC_BG = require('../assets/content_images/matchup_bg.jpeg');
+const FRESNO_LOGO = require('../assets/fresno_logo.png');
 
 function parseGameDate(game) {
   if (!game?.date) return new Date('2026-11-28T12:00:00');
@@ -454,12 +458,21 @@ export default function DashboardScreen({ navigation }) {
             </View>
           </View>
 
-          <View style={styles.heroCard}>
-            <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
+          <ImageBackground
+            source={MATCHUP_GRAPHIC_BG}
+            resizeMode="cover"
+            style={styles.heroCard}
+            imageStyle={styles.heroCardImageAsset}
+          >
             <LinearGradient
-              colors={['rgba(255,203,5,0.18)', 'rgba(255,203,5,0.03)', 'transparent']}
+              colors={['rgba(255,203,5,0.08)', 'rgba(255,203,5,0.015)', 'transparent']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <LinearGradient
+              colors={['rgba(0,0,0,0.0)', 'rgba(0,0,0,0.5)', 'rgba(0,0,0,0.96)']}
+              locations={[0, 0.56, 1]}
               style={StyleSheet.absoluteFill}
             />
 
@@ -471,19 +484,12 @@ export default function DashboardScreen({ navigation }) {
             </View>
 
             <View style={styles.matchupGraphic}>
-              <LinearGradient
-                colors={['rgba(0,39,76,0.6)', 'rgba(0,39,76,0.2)']}
-                style={StyleSheet.absoluteFill}
-              />
-
               <View style={styles.teamColumn}>
-                <View style={styles.teamLogoWrap}>
-                  <Image
-                    source={require('../assets/um-logo-blue.png')}
-                    style={styles.teamLogo}
-                    resizeMode="contain"
-                  />
-                </View>
+                <Image
+                  source={require('../assets/M_yellow_logo.png')}
+                  style={styles.teamLogo}
+                  resizeMode="contain"
+                />
                 <Text style={styles.teamLabel}>MICHIGAN</Text>
               </View>
 
@@ -492,9 +498,17 @@ export default function DashboardScreen({ navigation }) {
               </View>
 
               <View style={styles.teamColumn}>
-                <View style={[styles.opponentBadge, { backgroundColor: opponentBadge.color }]}>
-                  <Text style={styles.opponentBadgeText}>{opponentBadge.abbr}</Text>
-                </View>
+                {featuredGame.opponent === 'Fresno State' ? (
+                  <Image
+                    source={FRESNO_LOGO}
+                    style={styles.opponentLogo}
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <Text style={[styles.opponentWordmark, { color: opponentBadge.color }]}>
+                    {opponentBadge.abbr}
+                  </Text>
+                )}
                 <Text style={styles.teamLabel}>{featuredGame.opponent.toUpperCase()}</Text>
               </View>
             </View>
@@ -532,7 +546,7 @@ export default function DashboardScreen({ navigation }) {
                 <ChevronRight size={18} color={COLORS.blue} />
               </View>
             </TouchableOpacity>
-          </View>
+          </ImageBackground>
 
           <View style={styles.progressCard}>
             <BlurView intensity={24} tint="dark" style={StyleSheet.absoluteFill} />
@@ -884,6 +898,9 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.m,
     ...SHADOWS.lg,
   },
+  heroCardImageAsset: {
+    transform: [{ scale: 1 }],
+  },
   heroTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -908,52 +925,36 @@ const styles = StyleSheet.create({
     fontFamily: 'AtkinsonHyperlegible_700Bold',
   },
   matchupGraphic: {
-    borderRadius: RADIUS.lg,
-    borderWidth: 1,
-    borderColor: CHROME.surface.borderSoft,
-    paddingVertical: SPACING.m,
-    paddingHorizontal: SPACING.s,
+    paddingVertical: SPACING.s,
+    paddingHorizontal: 0,
     marginBottom: SPACING.s,
-    backgroundColor: CHROME.surface.elevated,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
   },
   teamColumn: {
     alignItems: 'center',
-    flex: 1,
-    paddingHorizontal: 4,
-  },
-  teamLogoWrap: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    alignItems: 'center',
+    width: '42%',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    marginBottom: 8,
+    minHeight: 98,
+    paddingHorizontal: 6,
   },
   teamLogo: {
-    width: 42,
-    height: 42,
-  },
-  opponentBadge: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.26)',
+    width: 74,
+    height: 74,
     marginBottom: 8,
   },
-  opponentBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 20,
+  opponentWordmark: {
+    fontSize: 42,
+    lineHeight: 42,
     fontFamily: 'Montserrat_700Bold',
     letterSpacing: 1,
+    marginBottom: 8,
+  },
+  opponentLogo: {
+    width: 78,
+    height: 78,
+    marginBottom: 8,
   },
   teamLabel: {
     color: COLORS.text,
@@ -961,16 +962,19 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat_700Bold',
     letterSpacing: 0.8,
     textAlign: 'center',
+    width: '100%',
   },
   vsBadge: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(6,18,33,0.68)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderColor: 'rgba(255,203,5,0.38)',
+    marginHorizontal: 0,
+    flexShrink: 0,
   },
   vsText: {
     color: COLORS.maize,
