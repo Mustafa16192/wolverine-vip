@@ -16,6 +16,7 @@ import { BlurView } from 'expo-blur';
 import { Clock, Bookmark, Share2, Star, ChevronRight } from 'lucide-react-native';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, CHROME } from '../constants/theme';
 import AppBackground from '../components/chrome/AppBackground';
+import { useAssistant } from '../context/AssistantContext';
 
 const { height: DEFAULT_HEIGHT } = Dimensions.get('window');
 const FILTERS = ['All', 'Exclusive', 'Analysis', 'Team News'];
@@ -88,8 +89,9 @@ function matchesFilter(story, filter) {
 
 export default function NewsScreen() {
   const listRef = useRef(null);
-  const [activeFilter, setActiveFilter] = useState('All');
+  const { selectedNewsFilter, setNewsFilter } = useAssistant();
   const [pageHeight, setPageHeight] = useState(DEFAULT_HEIGHT);
+  const activeFilter = FILTERS.includes(selectedNewsFilter) ? selectedNewsFilter : 'All';
 
   const filteredStories = useMemo(() => {
     const result = STORIES.filter(story => matchesFilter(story, activeFilter));
@@ -132,7 +134,7 @@ export default function NewsScreen() {
                     key={filter}
                     style={[styles.filterChip, selected && styles.filterChipActive]}
                     activeOpacity={0.85}
-                    onPress={() => setActiveFilter(filter)}
+                    onPress={() => setNewsFilter(filter)}
                   >
                     <Text style={[styles.filterText, selected && styles.filterTextActive]}>
                       {filter}

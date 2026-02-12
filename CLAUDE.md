@@ -4,52 +4,53 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Wolverine VIP is a premium mobile app for University of Michigan football season ticket holders, inspired by F1's "Box Box" app. Built with React Native (Expo SDK 54).
+Wolverine VIP is a premium mobile app prototype for University of Michigan football season ticket holders. Built with React Native (Expo SDK 54). Inspired by F1's "Box Box" app design philosophy.
 
 ## Development Commands
 
 ```bash
-# Install dependencies
 npm install
-
-# Start Expo development server
-npx expo start
-
-# Run on specific platforms
-npx expo start --ios      # iOS Simulator
-npx expo start --android  # Android Emulator
-npx expo start --web      # Web browser
+npx expo start --clear       # Recommended
+npx expo start --ios          # iOS Simulator
+npx expo start --android      # Android Emulator
+npx expo start --web          # Web browser
 ```
 
 ## Architecture
 
-### Navigation Structure
-- **App.js** - Root component with React Navigation setup
-- Uses bottom tab navigator with three main screens
-- Navigation theme configured with app colors
+### Two-Mode System
 
-### Screens (`/screens`)
-- **HomeScreen** - "Pit Wall" dashboard with countdown timer, matchup display, legacy stats, and news feed
-- **TicketScreen** - "Seat Command" with flip-to-scan digital season pass (3D card animation)
-- **RenewalScreen** - "Legacy" hub with renewal CTA and loyalty stats
+- **Club Mode** (non-game day): Bento dashboard with stats, news, shop
+- **Chaperone Mode** (game day): Sequential 8-phase journey (morning → tailgate → travel → parking → pregame → ingame → postgame → home)
 
-### Components (`/components`)
-- **BentoCard** - Reusable glassmorphic card with BlurView, optional gradient accent, and press handling
+### Navigation (App.js)
 
-### Theme System (`/constants/theme.js`)
-- **COLORS** - Michigan Blue (#00274C), Maize (#FFCB05), deep background, glassmorphic overlays
-- **SPACING** - xs/s/m/l/xl/xxl scale
-- **SHADOWS** - light/medium presets
+5-tab bottom navigator (Home, Stats, Ticket, News, Shop) with a Home stack containing the dashboard, game day phases, and detail screens. Tab bar is a floating pill with blur backdrop.
 
-## Key Libraries
-- `react-native-reanimated` + `moti` - Animations (card flips, countdown, glow effects)
-- `expo-blur` - Glassmorphism on cards
-- `expo-linear-gradient` - Gradient backgrounds and accents
-- `lucide-react-native` - Icons
-- `expo-haptics` - Available for tactile feedback
+### Context Providers
 
-## Design System
-- "Athletic Luxury" theme with dark OLED-friendly backgrounds
-- Glassmorphic cards with `rgba(255,255,255,0.08)` background and blur
-- Maize (#FFCB05) for actionable elements and highlights
-- Bold condensed typography for headers
+- `useApp()` from `context/AppContext.js` — mode, schedule, user profile, phase progression
+- `useGame()` from `context/GameContext.js` — simulation time, game states, auto-advance
+
+### Theme (`constants/theme.js`)
+
+Exports: `COLORS`, `TYPOGRAPHY`, `SPACING`, `RADIUS`, `SHADOWS`, `CHROME`, `ACCESSIBILITY`, `LAYOUT`
+
+- Michigan Blue `#00274C`, Maize `#FFCB05`
+- Fonts: Atkinson Hyperlegible (body), Montserrat (headings)
+- `CHROME` for gradient backgrounds and dock styling
+
+### Key Components
+
+- **BentoCard** — Glassmorphic card (BlurView + gradient accent)
+- **ConciergeCard** — Morphs content per game state
+- **AppBackground** — Layered gradient background (variants: default/home/gameDay)
+- **SimulatorControls** — Dev bar for state toggling
+
+## Guidelines
+
+- Use `constants/theme.js` exports — never hardcode colors/spacing
+- Icons: `lucide-react-native` only
+- Animations: React Native `Animated` API only (no reanimated/moti — not installed)
+- Fonts: `TYPOGRAPHY.fontFamily.heading` / `TYPOGRAPHY.fontFamily.body`
+- Wrap cards in `<BentoCard>`, use `<AppBackground>` for screen backgrounds

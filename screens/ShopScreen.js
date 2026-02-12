@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,7 @@ import {
   ChevronRight,
   Heart,
 } from 'lucide-react-native';
+import { useAssistant } from '../context/AssistantContext';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - SPACING.l * 2 - SPACING.s) / 2;
@@ -35,6 +36,7 @@ const CARD_WIDTH = (width - SPACING.l * 2 - SPACING.s) / 2;
 const FEATURED_PRODUCT = {
   id: 1,
   name: '2026 Championship Jersey',
+  category: 'Jerseys',
   price: 149.99,
   originalPrice: 179.99,
   discount: 17,
@@ -48,6 +50,7 @@ const PRODUCTS = [
   {
     id: 2,
     name: 'Vintage Logo Hoodie',
+    category: 'Apparel',
     price: 89.99,
     isVipExclusive: false,
     rating: 4.7,
@@ -56,6 +59,7 @@ const PRODUCTS = [
   {
     id: 3,
     name: 'Game Day Cap',
+    category: 'Accessories',
     price: 34.99,
     isVipExclusive: true,
     rating: 4.8,
@@ -64,6 +68,7 @@ const PRODUCTS = [
   {
     id: 4,
     name: 'Block M Polo',
+    category: 'Apparel',
     price: 64.99,
     isVipExclusive: false,
     rating: 4.6,
@@ -72,6 +77,7 @@ const PRODUCTS = [
   {
     id: 5,
     name: 'Legacy Scarf',
+    category: 'Accessories',
     price: 44.99,
     isVipExclusive: true,
     rating: 4.9,
@@ -80,14 +86,42 @@ const PRODUCTS = [
 ];
 
 const CATEGORIES = [
-  { name: 'All', count: 156 },
-  { name: 'Jerseys', count: 24 },
-  { name: 'Apparel', count: 67 },
-  { name: 'Accessories', count: 45 },
-  { name: 'Home', count: 20 },
+  { name: 'All' },
+  { name: 'Jerseys' },
+  { name: 'Apparel' },
+  { name: 'Accessories' },
+  { name: 'Home' },
 ];
 
 export default function ShopScreen() {
+  const { selectedShopCategory, setShopCategory } = useAssistant();
+  const activeCategory = CATEGORIES.some(category => category.name === selectedShopCategory)
+    ? selectedShopCategory
+    : 'All';
+
+  const categoryCounts = useMemo(() => {
+    const allItems = [FEATURED_PRODUCT, ...PRODUCTS];
+    const counts = { All: allItems.length, Jerseys: 0, Apparel: 0, Accessories: 0, Home: 0 };
+
+    allItems.forEach((item) => {
+      if (counts[item.category] !== undefined) {
+        counts[item.category] += 1;
+      }
+    });
+
+    return counts;
+  }, []);
+
+  const filteredProducts = useMemo(() => {
+    if (activeCategory === 'All') return PRODUCTS;
+    return PRODUCTS.filter(product => product.category === activeCategory);
+  }, [activeCategory]);
+
+  const featuredProduct = useMemo(() => {
+    if (activeCategory === 'All' || FEATURED_PRODUCT.category === activeCategory) return FEATURED_PRODUCT;
+    return filteredProducts[0] || FEATURED_PRODUCT;
+  }, [activeCategory, filteredProducts]);
+
   return (
     <View style={styles.container}>
       <AppBackground />
@@ -140,19 +174,24 @@ export default function ShopScreen() {
             style={styles.categoriesContainer}
             contentContainerStyle={styles.categoriesContent}
           >
-            {CATEGORIES.map((category, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[styles.categoryChip, index === 0 && styles.categoryChipActive]}
-              >
-                <Text style={[styles.categoryText, index === 0 && styles.categoryTextActive]}>
-                  {category.name}
-                </Text>
-                <Text style={[styles.categoryCount, index === 0 && styles.categoryCountActive]}>
-                  {category.count}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            {CATEGORIES.map((category) => {
+              const selected = category.name === activeCategory;
+              return (
+                <TouchableOpacity
+                  key={category.name}
+                  style={[styles.categoryChip, selected && styles.categoryChipActive]}
+                  activeOpacity={0.85}
+                  onPress={() => setShopCategory(category.name)}
+                >
+                  <Text style={[styles.categoryText, selected && styles.categoryTextActive]}>
+                    {category.name}
+                  </Text>
+                  <Text style={[styles.categoryCount, selected && styles.categoryCountActive]}>
+                    {categoryCounts[category.name] || 0}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
 
           {/* Featured Product */}
@@ -162,7 +201,7 @@ export default function ShopScreen() {
 
             {/* Product Image Placeholder */}
             <View style={styles.featuredImageContainer}>
-              <Image source={{ uri: FEATURED_PRODUCT.imageUrl }} style={styles.featuredImagePlaceholder} />
+              <Image source={{ uri: featuredProduct.imageUrl }} style={styles.featuredImagePlaceholder} />
               <LinearGradient
                 colors={['rgba(0,0,0,0.12)', 'rgba(0,0,0,0.54)']}
                 start={{ x: 0, y: 0 }}
@@ -170,7 +209,7 @@ export default function ShopScreen() {
                 style={StyleSheet.absoluteFill}
               />
 
-              {FEATURED_PRODUCT.isVipExclusive && (
+              {featuredProduct.isVipExclusive && (
                 <View style={styles.exclusiveBadge}>
                   <Star size={10} color={COLORS.blue} fill={COLORS.blue} />
                   <Text style={styles.exclusiveBadgeText}>VIP EXCLUSIVE</Text>
@@ -181,26 +220,26 @@ export default function ShopScreen() {
                 <Heart size={18} color={COLORS.text} />
               </TouchableOpacity>
 
-              {FEATURED_PRODUCT.discount > 0 && (
+              {featuredProduct.discount > 0 && (
                 <View style={styles.discountBadge}>
-                  <Text style={styles.discountText}>-{FEATURED_PRODUCT.discount}%</Text>
+                  <Text style={styles.discountText}>-{featuredProduct.discount}%</Text>
                 </View>
               )}
             </View>
 
             <View style={styles.featuredContent}>
-              <Text style={styles.featuredName}>{FEATURED_PRODUCT.name}</Text>
+              <Text style={styles.featuredName}>{featuredProduct.name}</Text>
 
               <View style={styles.ratingContainer}>
                 <Star size={14} color={COLORS.maize} fill={COLORS.maize} />
-                <Text style={styles.ratingText}>{FEATURED_PRODUCT.rating}</Text>
-                <Text style={styles.reviewsText}>({FEATURED_PRODUCT.reviews} reviews)</Text>
+                <Text style={styles.ratingText}>{featuredProduct.rating}</Text>
+                <Text style={styles.reviewsText}>({featuredProduct.reviews || 164} reviews)</Text>
               </View>
 
               <View style={styles.priceContainer}>
-                <Text style={styles.currentPrice}>${FEATURED_PRODUCT.price}</Text>
-                {FEATURED_PRODUCT.originalPrice && (
-                  <Text style={styles.originalPrice}>${FEATURED_PRODUCT.originalPrice}</Text>
+                <Text style={styles.currentPrice}>${featuredProduct.price}</Text>
+                {featuredProduct.originalPrice && (
+                  <Text style={styles.originalPrice}>${featuredProduct.originalPrice}</Text>
                 )}
               </View>
 
@@ -214,42 +253,52 @@ export default function ShopScreen() {
           {/* Product Grid */}
           <Text style={styles.sectionTitle}>VIP PICKS</Text>
           <View style={styles.productGrid}>
-            {PRODUCTS.map((product) => (
-              <TouchableOpacity key={product.id} style={styles.productCard} activeOpacity={0.8}>
-                <BlurView intensity={15} tint="dark" style={StyleSheet.absoluteFill} />
+            {filteredProducts.length > 0 ? (
+              filteredProducts.map((product) => (
+                <TouchableOpacity key={product.id} style={styles.productCard} activeOpacity={0.8}>
+                  <BlurView intensity={15} tint="dark" style={StyleSheet.absoluteFill} />
 
-                <View style={styles.productImageContainer}>
-                  <Image source={{ uri: product.imageUrl }} style={styles.productImagePlaceholder} />
-                  <LinearGradient
-                    colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.42)']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 0, y: 1 }}
-                    style={StyleSheet.absoluteFill}
-                  />
+                  <View style={styles.productImageContainer}>
+                    <Image source={{ uri: product.imageUrl }} style={styles.productImagePlaceholder} />
+                    <LinearGradient
+                      colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.42)']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 0, y: 1 }}
+                      style={StyleSheet.absoluteFill}
+                    />
 
-                  {product.isVipExclusive && (
-                    <View style={styles.vipBadgeSmall}>
-                      <Star size={8} color={COLORS.blue} fill={COLORS.blue} />
-                    </View>
-                  )}
+                    {product.isVipExclusive && (
+                      <View style={styles.vipBadgeSmall}>
+                        <Star size={8} color={COLORS.blue} fill={COLORS.blue} />
+                      </View>
+                    )}
 
-                  <TouchableOpacity style={styles.wishlistButtonSmall}>
-                    <Heart size={14} color={COLORS.textSecondary} />
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.productContent}>
-                  <Text style={styles.productName} numberOfLines={2}>{product.name}</Text>
-
-                  <View style={styles.productRating}>
-                    <Star size={10} color={COLORS.maize} fill={COLORS.maize} />
-                    <Text style={styles.productRatingText}>{product.rating}</Text>
+                    <TouchableOpacity style={styles.wishlistButtonSmall}>
+                      <Heart size={14} color={COLORS.textSecondary} />
+                    </TouchableOpacity>
                   </View>
 
-                  <Text style={styles.productPrice}>${product.price}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+                  <View style={styles.productContent}>
+                    <Text style={styles.productName} numberOfLines={2}>{product.name}</Text>
+
+                    <View style={styles.productRating}>
+                      <Star size={10} color={COLORS.maize} fill={COLORS.maize} />
+                      <Text style={styles.productRatingText}>{product.rating}</Text>
+                    </View>
+
+                    <Text style={styles.productPrice}>${product.price}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))
+            ) : (
+              <View style={styles.emptyCategoryCard}>
+                <BlurView intensity={14} tint="dark" style={StyleSheet.absoluteFill} />
+                <Text style={styles.emptyCategoryTitle}>No items yet in {activeCategory}</Text>
+                <Text style={styles.emptyCategoryBody}>
+                  New drops will appear here first for VIP members.
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Order Status Card */}
@@ -543,6 +592,27 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: SPACING.s,
     marginBottom: SPACING.xl,
+  },
+  emptyCategoryCard: {
+    width: '100%',
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: CHROME.surface.borderSoft,
+    backgroundColor: CHROME.surface.base,
+    overflow: 'hidden',
+    padding: SPACING.m,
+    gap: 4,
+  },
+  emptyCategoryTitle: {
+    color: COLORS.text,
+    fontSize: TYPOGRAPHY.fontSize.md,
+    fontFamily: 'Montserrat_600SemiBold',
+  },
+  emptyCategoryBody: {
+    color: COLORS.textSecondary,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    lineHeight: 18,
+    fontFamily: 'AtkinsonHyperlegible_400Regular',
   },
   productCard: {
     width: CARD_WIDTH,

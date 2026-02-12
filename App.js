@@ -1,10 +1,15 @@
 import 'react-native-gesture-handler';
-import React from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, ActivityIndicator, Platform, StyleSheet } from 'react-native';
-import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
+import {
+  NavigationContainer,
+  DefaultTheme,
+  createNavigationContainerRef,
+} from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { BlurView } from 'expo-blur';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { COLORS, CHROME } from './constants/theme';
 import { Home, BarChart3, Newspaper, ShoppingBag, Ticket } from 'lucide-react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -21,6 +26,7 @@ import {
 // Context
 import { AppProvider } from './context/AppContext';
 import { GameProvider } from './context/GameContext';
+import { AssistantProvider } from './context/AssistantContext';
 
 // Non-Game Day Screens
 import DashboardScreen from './screens/DashboardScreen';
@@ -42,9 +48,18 @@ import PregamePhase from './screens/gameday/PregamePhase';
 import IngamePhase from './screens/gameday/IngamePhase';
 import PostgamePhase from './screens/gameday/PostgamePhase';
 import HomePhase from './screens/gameday/HomePhase';
+import FloatingOrb from './components/assistant/FloatingOrb';
+import AssistantPanel from './components/assistant/AssistantPanel';
 
 const Tab = createBottomTabNavigator();
 const HomeStack = createStackNavigator();
+
+function getActiveRouteName(state) {
+  if (!state || !state.routes?.length) return 'Dashboard';
+  const route = state.routes[state.index ?? 0];
+  if (route.state) return getActiveRouteName(route.state);
+  return route.name || 'Dashboard';
+}
 
 /**
  * Navigation Theme
@@ -191,12 +206,24 @@ function MainTabs() {
  * Root App Component
  */
 export default function App() {
+  const [routeName, setRouteName] = useState('Dashboard');
+  const navigationRef = useMemo(() => createNavigationContainerRef(), []);
+  const assistantEnabled = process.env.EXPO_PUBLIC_ASSISTANT_ENABLED !== 'false';
+
   let [fontsLoaded] = useFonts({
     AtkinsonHyperlegible_400Regular,
     AtkinsonHyperlegible_700Bold,
     Montserrat_600SemiBold,
     Montserrat_700Bold,
   });
+
+  const handleNavigationStateChange = useCallback(() => {
+    if (!navigationRef.isReady()) return;
+    const currentRouteName = getActiveRouteName(navigationRef.getRootState());
+    if (currentRouteName) {
+      setRouteName(currentRouteName);
+    }
+  }, [navigationRef]);
 
   if (!fontsLoaded) {
     return (
@@ -207,14 +234,29 @@ export default function App() {
   }
 
   return (
-    <AppProvider>
-      <GameProvider>
-        <NavigationContainer theme={NavTheme}>
-          <StatusBar style="light" />
-          <MainTabs />
-        </NavigationContainer>
-      </GameProvider>
-    </AppProvider>
+    <SafeAreaProvider>
+      <AppProvider>
+        <GameProvider>
+          <AssistantProvider
+            assistantEnabled={assistantEnabled}
+            routeName={routeName}
+            navigationRef={navigationRef}
+          >
+            <NavigationContainer
+              ref={navigationRef}
+              theme={NavTheme}
+              onReady={handleNavigationStateChange}
+              onStateChange={handleNavigationStateChange}
+            >
+              <StatusBar style="light" />
+              <MainTabs />
+              <AssistantPanel />
+              <FloatingOrb />
+            </NavigationContainer>
+          </AssistantProvider>
+        </GameProvider>
+      </AppProvider>
+    </SafeAreaProvider>
   );
 }
 

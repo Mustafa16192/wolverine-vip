@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -27,6 +27,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { useApp } from '../context/AppContext';
 import AppBackground from '../components/chrome/AppBackground';
+import { registerTicketFlipHandler, unregisterTicketFlipHandler } from '../assistant/ticketFlipBridge';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width - SPACING.l * 2;
@@ -43,6 +44,7 @@ export default function TicketScreen({ navigation }) {
   const { user, currentGame, nextGame, enterGameDay } = useApp();
   const [isFlipped, setIsFlipped] = useState(false);
   const flipAnim = useRef(new Animated.Value(0)).current;
+  const tapAnim = useRef(new Animated.Value(0)).current;
   const shimmerAnim = useRef(new Animated.Value(0)).current;
   const featuredGame = currentGame || nextGame;
 
@@ -59,26 +61,73 @@ export default function TicketScreen({ navigation }) {
     return () => shimmer.stop();
   }, []);
 
-  const handleFlip = () => {
-    const toValue = isFlipped ? 0 : 1;
-    Animated.spring(flipAnim, {
-      toValue,
-      friction: 8,
-      tension: 10,
-      useNativeDriver: true,
-    }).start();
-    setIsFlipped(!isFlipped);
-  };
+  const handleFlip = useCallback(() => {
+    setIsFlipped((previous) => {
+      const toValue = previous ? 0 : 1;
+      Animated.parallel([
+        Animated.spring(flipAnim, {
+          toValue,
+          friction: 7,
+          tension: 70,
+          useNativeDriver: true,
+        }),
+        Animated.sequence([
+          Animated.timing(tapAnim, {
+            toValue: 1,
+            duration: 85,
+            useNativeDriver: true,
+          }),
+          Animated.spring(tapAnim, {
+            toValue: 0,
+            friction: 6,
+            tension: 130,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]).start();
+      return !previous;
+    });
+  }, [flipAnim, tapAnim]);
+
+  useEffect(() => {
+    registerTicketFlipHandler(handleFlip);
+    return () => unregisterTicketFlipHandler(handleFlip);
+  }, [handleFlip]);
 
   // Interpolations for card flip
-  const frontInterpolate = flipAnim.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [1, 0, 0],
+  const frontRotateY = flipAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '180deg'],
   });
 
-  const backInterpolate = flipAnim.interpolate({
+  const backRotateY = flipAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['180deg', '360deg'],
+  });
+
+  const frontOpacity = flipAnim.interpolate({
+    inputRange: [0, 0.49, 0.5, 1],
+    outputRange: [1, 1, 0, 0],
+  });
+
+  const backOpacity = flipAnim.interpolate({
+    inputRange: [0, 0.5, 0.51, 1],
+    outputRange: [0, 0, 1, 1],
+  });
+
+  const flipScale = flipAnim.interpolate({
     inputRange: [0, 0.5, 1],
-    outputRange: [0, 0, 1],
+    outputRange: [1, 0.965, 1],
+  });
+
+  const tapScale = tapAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0.985],
+  });
+
+  const cardLift = flipAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, -3, 0],
   });
 
   const shimmerTranslate = shimmerAnim.interpolate({
@@ -157,13 +206,30 @@ export default function TicketScreen({ navigation }) {
             activeOpacity={0.95}
             style={styles.cardTouchable}
           >
-            <View style={styles.cardContainer}>
+            <Animated.View
+              style={[
+                styles.cardContainer,
+                {
+                  transform: [
+                    { translateY: cardLift },
+                    { scale: flipScale },
+                    { scale: tapScale },
+                  ],
+                },
+              ]}
+            >
               {/* Front of Card */}
               <Animated.View
                 style={[
                   styles.ticketCard,
                   styles.frontCard,
-                  { opacity: frontInterpolate },
+                  {
+                    opacity: frontOpacity,
+                    transform: [
+                      { perspective: 1400 },
+                      { rotateY: frontRotateY },
+                    ],
+                  },
                 ]}
               >
                 <LinearGradient
@@ -252,7 +318,13 @@ export default function TicketScreen({ navigation }) {
                 style={[
                   styles.ticketCard,
                   styles.backCard,
-                  { opacity: backInterpolate },
+                  {
+                    opacity: backOpacity,
+                    transform: [
+                      { perspective: 1400 },
+                      { rotateY: backRotateY },
+                    ],
+                  },
                 ]}
               >
                 <LinearGradient
@@ -275,7 +347,7 @@ export default function TicketScreen({ navigation }) {
                   <View style={styles.backFooterLine} />
                 </View>
               </Animated.View>
-            </View>
+            </Animated.View>
           </TouchableOpacity>
 
           {/* Hint text */}
@@ -410,6 +482,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     borderRadius: RADIUS.xl,
     overflow: 'hidden',
+    backfaceVisibility: 'hidden',
   },
   frontCard: {
     zIndex: 2,

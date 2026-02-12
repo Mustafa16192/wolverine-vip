@@ -452,7 +452,7 @@ export default function DashboardScreen({ navigation }) {
             <View>
               <View style={styles.liveIndicator}>
                 <Animated.View style={[styles.liveDot, { opacity: pulseAnim }]} />
-                <Text style={styles.liveText}>{isGameDay ? 'GAME DAY HQ' : 'SEASON HQ'}</Text>
+                <Text style={styles.liveText}>{isGameDay ? 'GAME DAY HQ' : 'THE VICTORS HQ'}</Text>
               </View>
               <Text style={styles.username}>Welcome back, {user?.name || 'Member'}</Text>
             </View>
