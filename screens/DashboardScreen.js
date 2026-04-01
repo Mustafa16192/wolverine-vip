@@ -264,13 +264,13 @@ export default function DashboardScreen({ navigation }) {
     const snapshots = {
       season: {
         parking: { value: `${lot} reserved`, detail: `Season permit active • Spot ${spot}` },
-        gate: { value: 'Credentials synced', detail: `VIP entry profile is ready for ${opponent}.` },
-        weather: { value: 'Monitoring', detail: 'Forecast watch starts automatically during game week.' },
-        walk: { value: `Sec ${section}, Row ${row}`, detail: 'Seat route saved and ready to launch.' },
+        gate: { value: 'Entry pass ready', detail: `VIP entry is staged for ${opponent}.` },
+        weather: { value: 'Game week watch', detail: 'Forecast watch starts automatically during game week.' },
+        walk: { value: `Section ${section}`, detail: 'Best route to your seat is saved.' },
       },
       morning: {
         parking: { value: `${lot} confirmed`, detail: `Arrival window set • Spot ${spot}` },
-        gate: { value: 'Gate model pending', detail: 'Fast-lane prediction unlocks 24h before kickoff.' },
+        gate: { value: 'Entry lane pending', detail: 'Fast-lane recommendation unlocks 24h before kickoff.' },
         weather: { value: 'Low risk', detail: 'Pack a light layer for late wind shift.' },
         walk: { value: 'Route preview', detail: `Primary path loaded for Section ${section}.` },
       },
@@ -331,14 +331,14 @@ export default function DashboardScreen({ navigation }) {
       {
         id: 'gate',
         icon: Clock,
-        title: 'Entry Gates',
+        title: 'Entry Pass',
         value: stageSnapshot.gate.value,
         detail: stageSnapshot.gate.detail,
       },
       {
         id: 'weather',
         icon: Cloud,
-        title: 'Weather',
+        title: 'Weather Watch',
         value: stageSnapshot.weather.value,
         detail: stageSnapshot.weather.detail,
       },
@@ -379,50 +379,46 @@ export default function DashboardScreen({ navigation }) {
     };
   }, [featuredGame.isHome, parkingInfo.lot, isGameDay, daysToGame]);
 
-  const journeyPlan = useMemo(() => {
-    const minutesToKickoff = Math.round((gameDate.getTime() - Date.now()) / 60000);
-    const steps = [
-      { id: 'wake', time: '08:00', title: 'Wake-up briefing', detail: 'Weather, attire, and departure check' },
-      { id: 'travel', time: '09:45', title: 'Travel window', detail: 'Best route and congestion watch' },
-      { id: 'park', time: '10:40', title: 'Reserved parking', detail: `${parkingInfo.lot} • Spot ${parkingInfo.spot}` },
-      { id: 'gate', time: '11:00', title: 'Gate handoff', detail: `${gateHandoff.gate} host greeting` },
-      { id: 'field', time: '11:20', title: 'Field access', detail: 'Premium sideline pass window' },
-    ];
-
-    const thresholds = [360, 240, 140, 75, 40];
-    const planningMode = !isGameDay && daysToGame > 1;
-    let currentIndex = -1;
-
-    if (!planningMode) {
-      currentIndex = thresholds.findIndex((threshold, index) => {
-        const nextThreshold = thresholds[index + 1] ?? -100000;
-        return minutesToKickoff <= threshold && minutesToKickoff > nextThreshold;
-      });
-
-      if (currentIndex === -1) {
-        currentIndex = minutesToKickoff > thresholds[0] ? 0 : steps.length - 1;
-      }
-    }
-
-    return {
-      planningMode,
-      steps: steps.map((step, index) => {
-        let status = 'upcoming';
-        if (!planningMode) {
-          if (index < currentIndex) status = 'done';
-          if (index === currentIndex) status = 'current';
-        }
-        return { ...step, status };
-      }),
-    };
-  }, [gameDate, parkingInfo.lot, parkingInfo.spot, gateHandoff.gate, isGameDay, daysToGame]);
-
   const matchupLabel = currentGame ? "TODAY'S MATCHUP" : 'NEXT MATCHUP';
   const countdownChipText =
     countdown.totalMs > 0
       ? `Kickoff in ${countdown.days}d ${countdown.hours}h ${countdown.mins}m`
       : 'Kickoff window is active';
   const modeCtaText = 'Enter Game Day';
+  const primaryStatusId = useMemo(() => {
+    const stagePrimaryMap = {
+      season: 'parking',
+      morning: 'parking',
+      tailgate: 'gate',
+      travel: 'parking',
+      parking: 'parking',
+      pregame: 'gate',
+      ingame: 'walk',
+      postgame: 'parking',
+      home: 'parking',
+    };
+
+    return stagePrimaryMap[opsContext.stage] || 'parking';
+  }, [opsContext.stage]);
+
+  const primaryStatus = liveOps.find(item => item.id === primaryStatusId) || liveOps[0];
+  const secondaryStatuses = liveOps.filter(item => item.id !== primaryStatus.id).slice(0, 2);
+  const supportSummary = primaryStatus.id === 'gate'
+    ? {
+        title: 'Premium entry host',
+        value: gateHandoff.host,
+        detail: `${gateHandoff.gate} • ${gateHandoff.eta}`,
+        cta: 'Open entry pass',
+        onPress: () => navigation.navigate('Ticket'),
+      }
+    : {
+        title: 'Parking host',
+        value: parkingInfo.attendant,
+        detail: `${parkingInfo.lot} • ${parkingInfo.spot}`,
+        cta: 'Open parking guidance',
+        onPress: () => launchJourneyWithIntent('parking'),
+      };
+
   const launchJourneyWithIntent = (intent = 'journey') => {
     enterGameDay({ intent });
     navigation.navigate('GameDayHome');
@@ -440,6 +436,7 @@ export default function DashboardScreen({ navigation }) {
   const handlePrimaryModeAction = () => {
     launchJourneyWithIntent('journey');
   };
+  const PrimaryStatusIcon = primaryStatus.icon;
 
   return (
     <View style={styles.container}>
@@ -588,23 +585,59 @@ export default function DashboardScreen({ navigation }) {
           </View>
 
           <View style={styles.liveOpsHeader}>
-            <Text style={[styles.sectionTitle, styles.liveOpsTitle]}>LIVE OPS</Text>
+            <Text style={[styles.sectionTitle, styles.liveOpsTitle]}>LIVE STATUS</Text>
             <Text style={styles.liveOpsStage}>{opsContext.label}</Text>
           </View>
           <Text style={styles.liveOpsPriority}>{opsContext.priority}</Text>
-          <View style={styles.opsGrid}>
-            {liveOps.map(item => {
+          <TouchableOpacity
+            style={styles.statusPrimaryCard}
+            activeOpacity={0.92}
+            onPress={() => openLiveOpsDetail(primaryStatus.id)}
+          >
+            <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
+            <View style={styles.statusPrimaryHeader}>
+              <View style={styles.statusPrimaryBadge}>
+                <Text style={styles.statusPrimaryBadgeText}>MOST IMPORTANT RIGHT NOW</Text>
+              </View>
+              <View style={styles.statusSignal}>
+                <Circle
+                  size={10}
+                  color={primaryStatus.id === 'weather' ? '#38A169' : COLORS.maize}
+                  fill={primaryStatus.id === 'weather' ? '#38A169' : COLORS.maize}
+                />
+              </View>
+            </View>
+
+            <View style={styles.statusPrimaryMain}>
+              <View style={styles.statusPrimaryIconWrap}>
+                <PrimaryStatusIcon size={18} color={COLORS.maize} />
+              </View>
+              <View style={styles.statusPrimaryCopy}>
+                <Text style={styles.statusPrimaryTitle}>{primaryStatus.title}</Text>
+                <Text style={styles.statusPrimaryValue}>{primaryStatus.value}</Text>
+                <Text style={styles.statusPrimaryDetail}>{primaryStatus.detail}</Text>
+              </View>
+            </View>
+
+            <View style={styles.statusPrimaryFooter}>
+              <Text style={styles.statusPrimaryCta}>Open live support</Text>
+              <ChevronRight size={16} color={COLORS.maize} />
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.statusMiniGrid}>
+            {secondaryStatuses.map(item => {
               const Icon = item.icon;
               return (
                 <TouchableOpacity
                   key={item.id}
-                  style={styles.opsCard}
+                  style={styles.statusMiniCard}
                   activeOpacity={0.9}
                   onPress={() => openLiveOpsDetail(item.id)}
                 >
                   <BlurView intensity={18} tint="dark" style={StyleSheet.absoluteFill} />
-                  <View style={styles.opsTopRow}>
-                    <View style={styles.opsIconWrap}>
+                  <View style={styles.statusMiniTopRow}>
+                    <View style={styles.statusMiniIconWrap}>
                       <Icon size={16} color={COLORS.maize} />
                     </View>
                     <Circle
@@ -613,153 +646,59 @@ export default function DashboardScreen({ navigation }) {
                       fill={item.id === 'weather' ? '#38A169' : COLORS.maize}
                     />
                   </View>
-                  <Text style={styles.opsTitle}>{item.title}</Text>
-                  <Text style={styles.opsValue}>{item.value}</Text>
-                  <Text style={styles.opsDetail}>{item.detail}</Text>
-                  <View style={styles.opsFooterRow}>
-                    <Text style={styles.opsCta}>Open</Text>
+                  <Text style={styles.statusMiniTitle}>{item.title}</Text>
+                  <Text style={styles.statusMiniValue}>{item.value}</Text>
+                  <Text style={styles.statusMiniDetail}>{item.detail}</Text>
+                  <View style={styles.statusMiniFooterRow}>
+                    <Text style={styles.statusMiniCta}>Open</Text>
                     <ChevronRight size={14} color={COLORS.maize} />
                   </View>
                 </TouchableOpacity>
               );
             })}
           </View>
-
-          <Text style={styles.sectionTitle}>VIP CONCIERGE</Text>
-          <View style={styles.conciergeStack}>
-            <View style={styles.conciergeCard}>
-              <BlurView intensity={22} tint="dark" style={StyleSheet.absoluteFill} />
-              <View style={styles.conciergeHeaderRow}>
-                <View style={styles.conciergeIconWrap}>
-                  <MapPin size={16} color={COLORS.maize} />
-                </View>
-                <Text style={styles.conciergeTitle}>Parking Concierge</Text>
-              </View>
-
-              <View style={styles.conciergeMetaRow}>
-                <Text style={styles.conciergeMetaLabel}>LOT</Text>
-                <Text style={styles.conciergeMetaValue}>{parkingInfo.lot}</Text>
-              </View>
-              <View style={styles.conciergeMetaRow}>
-                <Text style={styles.conciergeMetaLabel}>SPOT</Text>
-                <Text style={styles.conciergeMetaValue}>{parkingInfo.spot}</Text>
-              </View>
-              <View style={styles.conciergeMetaRow}>
-                <Text style={styles.conciergeMetaLabel}>PERMIT</Text>
-                <Text style={styles.conciergeMetaValue}>{parkingInfo.permitId}</Text>
-              </View>
-              <Text style={styles.conciergeHint}>{parkingInfo.arrivalWindow}</Text>
-              <Text style={styles.conciergeHint}>{parkingInfo.attendant}</Text>
-
-              <TouchableOpacity
-                style={styles.conciergeAction}
-                activeOpacity={0.85}
-                onPress={() => launchJourneyWithIntent('parking')}
-              >
-                <Text style={styles.conciergeActionText}>Open Parking Guidance</Text>
-                <ChevronRight size={16} color={COLORS.maize} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.conciergeCard}>
-              <BlurView intensity={22} tint="dark" style={StyleSheet.absoluteFill} />
-              <View style={styles.conciergeHeaderRow}>
-                <View style={styles.conciergeIconWrap}>
-                  <Shield size={16} color={COLORS.maize} />
-                </View>
-                <Text style={styles.conciergeTitle}>Gate Handoff</Text>
-              </View>
-
-              <View style={styles.conciergeMetaRow}>
-                <Text style={styles.conciergeMetaLabel}>ENTRY</Text>
-                <Text style={styles.conciergeMetaValue}>{gateHandoff.gate}</Text>
-              </View>
-              <View style={styles.conciergeMetaRow}>
-                <Text style={styles.conciergeMetaLabel}>HOST</Text>
-                <Text style={styles.conciergeMetaValue}>{gateHandoff.host}</Text>
-              </View>
-              <View style={styles.conciergeMetaRow}>
-                <Text style={styles.conciergeMetaLabel}>ETA</Text>
-                <Text style={styles.conciergeMetaValue}>{gateHandoff.eta}</Text>
-              </View>
-              <Text style={styles.conciergeHint}>{gateHandoff.routeHint}</Text>
-              <Text style={styles.conciergeHint}>{gateHandoff.welcomeKit}</Text>
-
-              <TouchableOpacity
-                style={styles.conciergeAction}
-                activeOpacity={0.85}
-                onPress={() => navigation.navigate('Ticket')}
-              >
-                <Text style={styles.conciergeActionText}>Open Entry Pass</Text>
-                <ChevronRight size={16} color={COLORS.maize} />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <Text style={styles.sectionTitle}>TODAY JOURNEY</Text>
-          <View style={styles.timelineCard}>
+          <TouchableOpacity style={styles.supportStrip} activeOpacity={0.9} onPress={supportSummary.onPress}>
             <BlurView intensity={18} tint="dark" style={StyleSheet.absoluteFill} />
-            {journeyPlan.planningMode && (
-              <Text style={styles.timelinePlanningHint}>
-                Timeline unlocks in detail on game day. Your itinerary is staged.
-              </Text>
-            )}
-            {journeyPlan.steps.map((step, index) => (
-              <View
-                key={step.id}
-                style={[
-                  styles.timelineRow,
-                  index === journeyPlan.steps.length - 1 && styles.timelineRowLast,
-                ]}
-              >
-                <View style={styles.timelineRail}>
-                  <View
-                    style={[
-                      styles.timelineDot,
-                      step.status === 'done' && styles.timelineDotDone,
-                      step.status === 'current' && styles.timelineDotCurrent,
-                    ]}
-                  />
-                  {index < journeyPlan.steps.length - 1 && (
-                    <View
-                      style={[
-                        styles.timelineConnector,
-                        step.status === 'done' && styles.timelineConnectorDone,
-                      ]}
-                    />
-                  )}
-                </View>
-
-                <View style={styles.timelineContent}>
-                  <View style={styles.timelineHeader}>
-                    <Text style={styles.timelineTime}>{step.time}</Text>
-                    <Text
-                      style={[
-                        styles.timelineStatus,
-                        step.status === 'done' && styles.timelineStatusDone,
-                        step.status === 'current' && styles.timelineStatusCurrent,
-                      ]}
-                    >
-                      {step.status === 'done' ? 'Done' : step.status === 'current' ? 'Current' : 'Upcoming'}
-                    </Text>
-                  </View>
-                  <Text style={styles.timelineTitle}>{step.title}</Text>
-                  <Text style={styles.timelineDetail}>{step.detail}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
+            <View style={styles.supportStripIconWrap}>
+              <Shield size={16} color={COLORS.maize} />
+            </View>
+            <View style={styles.supportStripCopy}>
+              <Text style={styles.supportStripTitle}>{supportSummary.title}</Text>
+              <Text style={styles.supportStripValue}>{supportSummary.value}</Text>
+              <Text style={styles.supportStripDetail}>{supportSummary.detail}</Text>
+            </View>
+            <View style={styles.supportStripCta}>
+              <Text style={styles.supportStripCtaText}>{supportSummary.cta}</Text>
+              <ChevronRight size={14} color={COLORS.maize} />
+            </View>
+          </TouchableOpacity>
 
           <Text style={styles.sectionTitle}>QUICK ACTIONS</Text>
-          <View style={styles.actionRow}>
-            <ActionPill icon={Ticket} label="Scan Ticket" onPress={() => navigation.navigate('Ticket')} />
-            <ActionPill icon={Utensils} label="Order Food" onPress={() => navigation.navigate('Ticket')} />
-            <ActionPill
+          <View style={styles.actionGrid}>
+            <ActionTile
+              icon={Ticket}
+              label="Scan Ticket"
+              detail="Open your premium pass"
+              onPress={() => navigation.navigate('Ticket')}
+            />
+            <ActionTile
               icon={Route}
-              label={isGameDay ? 'Travel' : 'Route'}
+              label={isGameDay ? 'Resume Journey' : 'Route'}
+              detail="Launch arrival guidance"
               onPress={() => launchJourneyWithIntent('travel')}
             />
-            <ActionPill icon={Share2} label="Guest Pass" onPress={() => navigation.navigate('News')} />
+            <ActionTile
+              icon={Utensils}
+              label="Order Food"
+              detail="Premium in-seat service"
+              onPress={() => navigation.navigate('Ticket')}
+            />
+            <ActionTile
+              icon={Share2}
+              label="Guest Pass"
+              detail="Share member access"
+              onPress={() => navigation.navigate('News')}
+            />
           </View>
 
           <View style={styles.legacyCard}>
@@ -773,8 +712,8 @@ export default function DashboardScreen({ navigation }) {
 
             <View style={styles.legacyHeader}>
               <View>
-                <Text style={styles.legacyEyebrow}>LEGACY STATUS</Text>
-                <Text style={styles.legacyTitle}>Renewal Momentum</Text>
+                <Text style={styles.legacyEyebrow}>MEMBERSHIP</Text>
+                <Text style={styles.legacyTitle}>Your Michigan tenure</Text>
               </View>
               <TouchableOpacity style={styles.legacyCta} onPress={() => navigation.navigate('Stats')}>
                 <Text style={styles.legacyCtaText}>View Profile</Text>
@@ -831,6 +770,19 @@ function ActionPill({ icon: Icon, label, onPress }) {
     <TouchableOpacity style={styles.actionPill} activeOpacity={0.9} onPress={onPress}>
       <Icon size={16} color={COLORS.maize} />
       <Text style={styles.actionPillText}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+function ActionTile({ icon: Icon, label, detail, onPress }) {
+  return (
+    <TouchableOpacity style={styles.actionTile} activeOpacity={0.92} onPress={onPress}>
+      <BlurView intensity={18} tint="dark" style={StyleSheet.absoluteFill} />
+      <View style={styles.actionTileIconWrap}>
+        <Icon size={18} color={COLORS.maize} />
+      </View>
+      <Text style={styles.actionTileLabel}>{label}</Text>
+      <Text style={styles.actionTileDetail}>{detail}</Text>
     </TouchableOpacity>
   );
 }
@@ -1151,6 +1103,199 @@ const styles = StyleSheet.create({
     gap: SPACING.s,
     marginBottom: SPACING.m,
   },
+  statusPrimaryCard: {
+    borderRadius: RADIUS.lg,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: CHROME.surface.border,
+    backgroundColor: CHROME.surface.base,
+    padding: SPACING.m,
+    marginBottom: SPACING.s,
+  },
+  statusPrimaryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.s,
+  },
+  statusPrimaryBadge: {
+    backgroundColor: 'rgba(255,203,5,0.14)',
+    borderRadius: RADIUS.full,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  statusPrimaryBadgeText: {
+    color: COLORS.maize,
+    fontSize: 10,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 0.9,
+  },
+  statusSignal: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusPrimaryMain: {
+    flexDirection: 'row',
+    gap: SPACING.s,
+    alignItems: 'flex-start',
+  },
+  statusPrimaryIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,203,5,0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusPrimaryCopy: {
+    flex: 1,
+  },
+  statusPrimaryTitle: {
+    color: COLORS.textTertiary,
+    fontSize: TYPOGRAPHY.fontSize.xs,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 0.8,
+    marginBottom: 4,
+  },
+  statusPrimaryValue: {
+    color: COLORS.text,
+    fontSize: TYPOGRAPHY.fontSize.xl,
+    lineHeight: 28,
+    fontFamily: 'Montserrat_700Bold',
+    marginBottom: 4,
+  },
+  statusPrimaryDetail: {
+    color: COLORS.textSecondary,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    lineHeight: 18,
+    fontFamily: 'AtkinsonHyperlegible_400Regular',
+  },
+  statusPrimaryFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: SPACING.s,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.1)',
+  },
+  statusPrimaryCta: {
+    color: COLORS.maize,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    fontFamily: 'Montserrat_700Bold',
+  },
+  statusMiniGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.s,
+    marginBottom: SPACING.s,
+  },
+  statusMiniCard: {
+    width: '48.7%',
+    borderRadius: RADIUS.md,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: CHROME.surface.borderSoft,
+    backgroundColor: CHROME.surface.base,
+    padding: SPACING.s,
+  },
+  statusMiniTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  statusMiniIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,203,5,0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusMiniTitle: {
+    color: COLORS.textTertiary,
+    fontSize: TYPOGRAPHY.fontSize.xs,
+    fontFamily: 'Montserrat_600SemiBold',
+    marginBottom: 4,
+    letterSpacing: 0.6,
+  },
+  statusMiniValue: {
+    color: COLORS.text,
+    fontSize: TYPOGRAPHY.fontSize.md,
+    fontFamily: 'Montserrat_700Bold',
+    marginBottom: 2,
+  },
+  statusMiniDetail: {
+    color: COLORS.textSecondary,
+    fontSize: 11,
+    lineHeight: 15,
+    fontFamily: 'AtkinsonHyperlegible_400Regular',
+  },
+  statusMiniFooterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 4,
+    marginTop: 8,
+  },
+  statusMiniCta: {
+    color: COLORS.maize,
+    fontSize: TYPOGRAPHY.fontSize.xs,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 0.5,
+  },
+  supportStrip: {
+    borderRadius: RADIUS.md,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: CHROME.surface.borderSoft,
+    backgroundColor: CHROME.surface.base,
+    padding: SPACING.s,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.s,
+    marginBottom: SPACING.m,
+  },
+  supportStripIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,203,5,0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  supportStripCopy: {
+    flex: 1,
+  },
+  supportStripTitle: {
+    color: COLORS.textTertiary,
+    fontSize: TYPOGRAPHY.fontSize.xs,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 0.8,
+    marginBottom: 2,
+  },
+  supportStripValue: {
+    color: COLORS.text,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    fontFamily: 'Montserrat_700Bold',
+    marginBottom: 2,
+  },
+  supportStripDetail: {
+    color: COLORS.textSecondary,
+    fontSize: TYPOGRAPHY.fontSize.xs,
+    fontFamily: 'AtkinsonHyperlegible_400Regular',
+  },
+  supportStripCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  supportStripCtaText: {
+    color: COLORS.maize,
+    fontSize: TYPOGRAPHY.fontSize.xs,
+    fontFamily: 'Montserrat_700Bold',
+  },
   opsCard: {
     width: '48.7%',
     borderRadius: RADIUS.md,
@@ -1376,6 +1521,12 @@ const styles = StyleSheet.create({
     gap: SPACING.s,
     marginBottom: SPACING.m,
   },
+  actionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.s,
+    marginBottom: SPACING.m,
+  },
   actionPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1391,6 +1542,37 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontSize: TYPOGRAPHY.fontSize.sm,
     fontFamily: 'Montserrat_600SemiBold',
+  },
+  actionTile: {
+    width: '48.7%',
+    minHeight: 110,
+    borderRadius: RADIUS.lg,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: CHROME.surface.border,
+    backgroundColor: CHROME.surface.base,
+    padding: SPACING.s,
+  },
+  actionTileIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255,203,5,0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.s,
+  },
+  actionTileLabel: {
+    color: COLORS.text,
+    fontSize: TYPOGRAPHY.fontSize.md,
+    fontFamily: 'Montserrat_700Bold',
+    marginBottom: 4,
+  },
+  actionTileDetail: {
+    color: COLORS.textSecondary,
+    fontSize: TYPOGRAPHY.fontSize.xs,
+    lineHeight: 16,
+    fontFamily: 'AtkinsonHyperlegible_400Regular',
   },
 
   legacyCard: {

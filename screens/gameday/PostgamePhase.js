@@ -1,10 +1,12 @@
 import React, { useRef, useEffect } from 'react';
 import {
+  Alert,
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
+  Share,
+  SafeAreaView,
   TouchableOpacity,
   Animated,
 } from 'react-native';
@@ -40,6 +42,11 @@ export default function PostgamePhase({ navigation }) {
   const { advancePhase, user } = useApp();
   const celebrationAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const finalScore = {
+    michigan: 35,
+    opponent: 21,
+    opponentName: 'Ohio State',
+  };
 
   useEffect(() => {
     Animated.parallel([
@@ -59,6 +66,28 @@ export default function PostgamePhase({ navigation }) {
   const handleContinue = () => {
     advancePhase();
     navigation.navigate('GameDayHome');
+  };
+
+  const handleShareVictory = async () => {
+    const shareMessage = [
+      `Michigan ${finalScore.michigan}, ${finalScore.opponentName} ${finalScore.opponent}.`,
+      'Another one for the maize and blue.',
+      `${user.stats.winsWitnessed + 1} wins witnessed as a Wolverines season ticket holder.`,
+      '#GoBlue',
+    ].join(' ');
+
+    try {
+      await Share.share({
+        title: 'Share Michigan Victory',
+        message: shareMessage,
+      });
+    } catch (error) {
+      Alert.alert('Share unavailable', 'Unable to open the share sheet right now.');
+    }
+  };
+
+  const handleGamePhotos = () => {
+    Alert.alert('Game photos', 'Photo download will be available after the prototype is connected to real media.');
   };
 
   return (
@@ -107,14 +136,14 @@ export default function PostgamePhase({ navigation }) {
               <View style={styles.finalScore}>
                 <View style={styles.scoreTeam}>
                   <Text style={styles.scoreTeamName}>MICHIGAN</Text>
-                  <Text style={styles.scoreValue}>35</Text>
+                  <Text style={styles.scoreValue}>{finalScore.michigan}</Text>
                 </View>
                 <View style={styles.scoreDivider}>
                   <Text style={styles.scoreDividerText}>FINAL</Text>
                 </View>
                 <View style={styles.scoreTeam}>
-                  <Text style={styles.scoreTeamName}>OHIO STATE</Text>
-                  <Text style={styles.scoreValueOpponent}>21</Text>
+                  <Text style={styles.scoreTeamName}>{finalScore.opponentName.toUpperCase()}</Text>
+                  <Text style={styles.scoreValueOpponent}>{finalScore.opponent}</Text>
                 </View>
               </View>
             </View>
@@ -164,19 +193,42 @@ export default function PostgamePhase({ navigation }) {
 
           {/* Share Section */}
           <Text style={styles.sectionTitle}>SHARE THE VICTORY</Text>
+          <View style={styles.shareHeroCard}>
+            <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
+            <LinearGradient
+              colors={['rgba(255,203,5,0.22)', 'rgba(255,203,5,0.04)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.shareHeroContent}>
+              <View style={styles.shareHeroTop}>
+                <Text style={styles.shareHeroLabel}>Michigan Football</Text>
+                <Text style={styles.shareHeroStamp}>FT</Text>
+              </View>
+              <Text style={styles.shareHeroTitle}>Michigan won.</Text>
+              <Text style={styles.shareHeroScore}>
+                {finalScore.michigan} - {finalScore.opponent}
+              </Text>
+              <Text style={styles.shareHeroMeta}>
+                {user.stats.winsWitnessed + 1} wins witnessed • {user.yearsAsMember} years as a member
+              </Text>
+            </View>
+          </View>
+
           <View style={styles.shareGrid}>
-            <TouchableOpacity style={styles.shareCard}>
+            <TouchableOpacity style={styles.shareCard} onPress={handleGamePhotos}>
               <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
               <Camera size={28} color={COLORS.maize} />
               <Text style={styles.shareCardTitle}>Game Photos</Text>
               <Text style={styles.shareCardSubtitle}>View & download</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.shareCard}>
+            <TouchableOpacity style={styles.shareCard} onPress={handleShareVictory}>
               <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
               <Share2 size={28} color={COLORS.maize} />
               <Text style={styles.shareCardTitle}>Share Victory</Text>
-              <Text style={styles.shareCardSubtitle}>Post to social</Text>
+              <Text style={styles.shareCardSubtitle}>Open share sheet</Text>
             </TouchableOpacity>
           </View>
 
@@ -378,6 +430,56 @@ const styles = StyleSheet.create({
   },
 
   // Share Grid
+  shareHeroCard: {
+    borderRadius: RADIUS.lg,
+    overflow: 'hidden',
+    marginBottom: SPACING.m,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  shareHeroContent: {
+    padding: SPACING.l,
+  },
+  shareHeroTop: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.m,
+  },
+  shareHeroLabel: {
+    color: COLORS.textSecondary,
+    fontSize: TYPOGRAPHY.fontSize.xs,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  shareHeroStamp: {
+    color: COLORS.maize,
+    fontSize: TYPOGRAPHY.fontSize.xs,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  shareHeroTitle: {
+    color: COLORS.text,
+    fontSize: 32,
+    fontFamily: 'Montserrat_700Bold',
+    lineHeight: 36,
+    marginBottom: SPACING.xs,
+  },
+  shareHeroScore: {
+    color: COLORS.maize,
+    fontSize: 48,
+    fontFamily: 'Montserrat_700Bold',
+    lineHeight: 54,
+    marginBottom: SPACING.xs,
+  },
+  shareHeroMeta: {
+    color: COLORS.textSecondary,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    fontFamily: 'AtkinsonHyperlegible_400Regular',
+    lineHeight: 20,
+  },
   shareGrid: {
     flexDirection: 'row',
     gap: SPACING.m,
