@@ -510,7 +510,7 @@ export default function DashboardScreen({ navigation }) {
               <Text style={styles.countdownChipText}>{countdownChipText}</Text>
             </View>
 
-            <TouchableOpacity style={styles.primaryCta} onPress={handlePrimaryModeAction} activeOpacity={0.9}>
+            <TouchableOpacity style={styles.primaryCta} onPress={handleSecondaryHeroAction} activeOpacity={0.9}>
               <LinearGradient
                 colors={[COLORS.maize, '#E7B600']}
                 start={{ x: 0, y: 0 }}
@@ -518,29 +518,10 @@ export default function DashboardScreen({ navigation }) {
                 style={StyleSheet.absoluteFill}
               />
               <View style={styles.primaryCtaContent}>
-                <Ticket size={18} color={COLORS.blue} />
-                <Text style={styles.primaryCtaText}>{modeCtaText}</Text>
+                <Route size={18} color={COLORS.blue} />
+                <Text style={styles.primaryCtaText}>{journeyCtaText}</Text>
                 <ChevronRight size={18} color={COLORS.blue} />
               </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.heroSecondaryAction}
-              onPress={handleSecondaryHeroAction}
-              activeOpacity={0.9}
-            >
-              <View style={styles.heroSecondaryActionCopy}>
-                <View style={styles.heroSecondaryActionTitleRow}>
-                  <Route size={14} color={COLORS.maize} />
-                  <Text style={styles.heroSecondaryActionText}>{journeyCtaText}</Text>
-                </View>
-                <Text style={styles.heroSecondaryActionHint}>
-                  {isGameDay
-                    ? 'Pick up your phase-by-phase guidance where you left it.'
-                    : 'Move from arrival to gate with the guided game-day flow.'}
-                </Text>
-              </View>
-              <ChevronRight size={16} color={COLORS.maize} />
             </TouchableOpacity>
           </ImageBackground>
 

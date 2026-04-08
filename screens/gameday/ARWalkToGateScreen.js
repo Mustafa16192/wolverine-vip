@@ -90,13 +90,13 @@ export default function ARWalkToGateScreen({ navigation }) {
   const autoRequestedRef = useRef(false);
 
   const {
-    advancePhase,
+    goToPhase,
     user,
     walkAssistSteps,
     walkAssistSession,
     advanceWalkAssist,
     fallbackWalkAssistToMap,
-    completeWalkAssist,
+    completeWalkAssistJourney,
     resetWalkAssist,
   } = useApp();
 
@@ -118,12 +118,14 @@ export default function ARWalkToGateScreen({ navigation }) {
   }, [isFocused, permission?.granted, requestPermission]);
 
   const handleBack = () => {
-    navigation.navigate('ParkingPhase');
+    goToPhase('parking');
+    navigation.navigate('GameDayHome');
   };
 
   const handleMapFallback = () => {
     fallbackWalkAssistToMap();
-    navigation.navigate('ParkingPhase');
+    goToPhase('parking');
+    navigation.navigate('GameDayHome');
   };
 
   const handleRetryPermission = async () => {
@@ -137,14 +139,15 @@ export default function ARWalkToGateScreen({ navigation }) {
 
   const handlePrimaryAction = async () => {
     if (walkAssistSession.status === 'complete') {
-      advancePhase();
-      navigation.navigate('PregamePhase');
+      goToPhase('pregame');
+      navigation.navigate('GameDayHome');
       return;
     }
 
     if (isFinalStep) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      completeWalkAssist();
+      completeWalkAssistJourney();
+      navigation.navigate('GameDayHome');
       return;
     }
 
@@ -285,10 +288,10 @@ export default function ARWalkToGateScreen({ navigation }) {
                 <>
                   <Text style={styles.sheetEyebrow}>GATE REACHED</Text>
                   <Text style={styles.sheetTitle}>You’re at Gate 4</Text>
-                  <Text style={styles.sheetDetail}>Entry routing is complete. Move into pre-game access for tunnel and sideline experiences.</Text>
+                  <Text style={styles.sheetDetail}>Entry routing is complete. Return to the journey for the focused gate and seat handoff.</Text>
 
                   <TouchableOpacity style={styles.primaryButton} activeOpacity={0.9} onPress={handlePrimaryAction}>
-                    <Text style={styles.primaryButtonText}>CONTINUE TO PRE-GAME</Text>
+                    <Text style={styles.primaryButtonText}>RETURN TO JOURNEY</Text>
                     <ChevronRight size={18} color={COLORS.blue} />
                   </TouchableOpacity>
 

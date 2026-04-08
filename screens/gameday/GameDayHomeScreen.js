@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
-  Image,
   Platform,
   Modal,
 } from 'react-native';
@@ -26,7 +25,6 @@ import {
   Home,
   ChevronLeft,
   ChevronRight,
-  ChevronDown,
   Cloud,
   Thermometer,
   Clock,
@@ -71,10 +69,14 @@ export default function GameDayHomeScreen({ navigation }) {
     currentGame,
     user,
     exitGameDay,
+    journeyOverlay,
+    openJourneyOverlay,
+    closeJourneyOverlay,
     parkingAssistSession,
+    openParkingAssist,
     walkAssistSession,
+    openWalkAssist,
   } = useApp();
-  const [showTicketReadySheet, setShowTicketReadySheet] = useState(false);
 
   const currentPhaseIndex = JOURNEY_PHASES.findIndex(p => p.id === gameDayPhase);
   const currentPhaseData = JOURNEY_PHASES[currentPhaseIndex];
@@ -93,14 +95,48 @@ export default function GameDayHomeScreen({ navigation }) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     if (gameDayPhase === 'parking' && parkingAssistSession.status === 'complete') {
-      setShowTicketReadySheet(true);
+      if (walkAssistSession.status !== 'complete') {
+        handleStartWalkAssist();
+        return;
+      }
+    }
+
+    if (gameDayPhase === 'pregame' && walkAssistSession.status === 'complete') {
+      advanceToNextAvailablePhase();
       return;
     }
 
     advanceToNextAvailablePhase();
   };
 
+  const handleOpenParkingAssistFlow = () => {
+    openParkingAssist();
+    navigation.navigate('ARParkingAssist');
+  };
+
+  const handleStartWalkAssist = () => {
+    closeJourneyOverlay();
+    openWalkAssist();
+    navigation.navigate('ARWalkToGate');
+  };
+
+  const handleOpenTicketOverlay = () => {
+    openJourneyOverlay('ticket_ready');
+  };
+
+  const handleDismissTicketOverlay = () => {
+    closeJourneyOverlay();
+  };
+
+  const handleContinueFromTicketOverlay = () => {
+    handleStartWalkAssist();
+  };
+
   const handlePhaseDetailPress = () => {
+    if (gameDayPhase === 'parking') {
+      handleOpenParkingAssistFlow();
+      return;
+    }
     const screenName = currentPhaseData.id.charAt(0).toUpperCase() + currentPhaseData.id.slice(1) + 'Phase';
     navigation.navigate(screenName);
   };
@@ -157,12 +193,26 @@ export default function GameDayHomeScreen({ navigation }) {
       if (parkingAssistSession.status !== 'complete') {
         return {
           label: 'OPEN PARKING ASSIST',
-          onPress: handlePhaseDetailPress,
+          onPress: handleOpenParkingAssistFlow,
+        };
+      }
+
+      if (walkAssistSession.status !== 'complete') {
+        return {
+          label: 'START WALK ASSIST',
+          onPress: handleStartWalkAssist,
         };
       }
 
       return {
-        label: 'PREPARE ENTRY PASS',
+        label: 'VIEW ENTRY PASS',
+        onPress: handleOpenTicketOverlay,
+      };
+    }
+
+    if (gameDayPhase === 'pregame' && walkAssistSession.status === 'complete') {
+      return {
+        label: 'ENTER STADIUM',
         onPress: handleAdvance,
       };
     }
@@ -182,6 +232,7 @@ export default function GameDayHomeScreen({ navigation }) {
 
   const phaseNarrative = getPhaseNarrative();
   const primaryAction = getPrimaryActionConfig();
+  const ticketOverlayVisible = journeyOverlay === 'ticket_ready';
 
   return (
     <View style={styles.container}>
@@ -273,7 +324,7 @@ export default function GameDayHomeScreen({ navigation }) {
 
             {/* Context-Aware Content */}
             <View style={styles.phaseCardBody}>
-              {renderPhaseContent(gameDayPhase, user, currentGame, navigation)}
+              {renderPhaseContent(gameDayPhase, user, currentGame, navigation, handleOpenTicketOverlay)}
             </View>
           </View>
         </ScrollView>
@@ -299,71 +350,89 @@ export default function GameDayHomeScreen({ navigation }) {
       </SafeAreaView>
 
       <Modal
-        visible={showTicketReadySheet}
+        visible={ticketOverlayVisible}
         transparent
-        animationType="slide"
-        onRequestClose={() => setShowTicketReadySheet(false)}
+        animationType="fade"
+        onRequestClose={handleDismissTicketOverlay}
       >
-        <View style={styles.ticketSheetOverlay}>
+        <View style={styles.ticketOverlay}>
           <TouchableOpacity
             style={StyleSheet.absoluteFill}
             activeOpacity={1}
-            onPress={() => setShowTicketReadySheet(false)}
+            onPress={handleDismissTicketOverlay}
           />
-          <View style={styles.ticketSheet}>
-            <BlurView intensity={28} tint="dark" style={StyleSheet.absoluteFill} />
-            <LinearGradient
-              colors={['rgba(255,203,5,0.14)', 'rgba(255,203,5,0.02)', 'rgba(0,0,0,0)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
+          <View style={styles.ticketOverlayInner}>
+            <View style={styles.walletPass}>
+              <LinearGradient
+                colors={[COLORS.blue, 'rgba(0,39,76,0.95)', 'rgba(4,12,23,0.98)']}
+                locations={[0, 0.62, 1]}
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={styles.walletPassAccent} />
 
-            <View style={styles.ticketSheetHandle} />
+              <View style={styles.walletPassHeader}>
+                <View>
+                  <Text style={styles.walletPassEyebrow}>ENTRY PASS</Text>
+                  <Text style={styles.walletPassTitle}>Seat Command</Text>
+                </View>
+                <View style={styles.walletPassBadge}>
+                  <Ticket size={14} color={COLORS.blue} />
+                  <Text style={styles.walletPassBadgeText}>READY</Text>
+                </View>
+              </View>
 
-            <View style={styles.ticketSheetHeader}>
-              <View style={styles.ticketSheetBadge}>
-                <Ticket size={14} color={COLORS.blue} />
-                <Text style={styles.ticketSheetBadgeText}>ENTRY MOMENT</Text>
+              <View style={styles.walletMetaRow}>
+                <View style={styles.walletMetaChip}>
+                  <Shield size={12} color={COLORS.maize} />
+                  <Text style={styles.walletMetaChipText}>Gate 4</Text>
+                </View>
+                <View style={styles.walletMetaChip}>
+                  <MapPin size={12} color={COLORS.maize} />
+                  <Text style={styles.walletMetaChipText}>Sec {user.seat.section}</Text>
+                </View>
+                <View style={styles.walletMetaChip}>
+                  <Clock size={12} color={COLORS.maize} />
+                  <Text style={styles.walletMetaChipText}>{currentGame?.time || '12:00 PM'}</Text>
+                </View>
               </View>
-              <Text style={styles.ticketSheetTitle}>Your ticket is ready.</Text>
-              <Text style={styles.ticketSheetBody}>
-                Parking is confirmed. Open your pass now so the walk to Gate 4 feels seamless instead of rushed.
-              </Text>
-            </View>
 
-            <View style={styles.ticketSheetMetaRow}>
-              <View style={styles.ticketMetaChip}>
-                <Shield size={12} color={COLORS.maize} />
-                <Text style={styles.ticketMetaChipText}>Gate 4</Text>
+              <View style={styles.walletSeatRow}>
+                <View style={styles.walletSeatBlock}>
+                  <Text style={styles.walletSeatLabel}>SECTION</Text>
+                  <Text style={styles.walletSeatValue}>{user.seat.section}</Text>
+                </View>
+                <View style={styles.walletSeatDivider} />
+                <View style={styles.walletSeatBlock}>
+                  <Text style={styles.walletSeatLabel}>ROW</Text>
+                  <Text style={styles.walletSeatValue}>{user.seat.row}</Text>
+                </View>
+                <View style={styles.walletSeatDivider} />
+                <View style={styles.walletSeatBlock}>
+                  <Text style={styles.walletSeatLabel}>SEAT</Text>
+                  <Text style={styles.walletSeatValue}>{user.seat.seat}</Text>
+                </View>
               </View>
-              <View style={styles.ticketMetaChip}>
-                <MapPin size={12} color={COLORS.maize} />
-                <Text style={styles.ticketMetaChipText}>Sec {user.seat.section}</Text>
-              </View>
-              <View style={styles.ticketMetaChip}>
-                <Clock size={12} color={COLORS.maize} />
-                <Text style={styles.ticketMetaChipText}>{currentGame?.time || '12:00 PM'}</Text>
-              </View>
-            </View>
 
-            <View style={styles.ticketSeatCard}>
-              <Text style={styles.ticketSeatLabel}>Seat Command</Text>
-              <Text style={styles.ticketSeatValue}>
-                Section {user.seat.section} • Row {user.seat.row} • Seat {user.seat.seat}
-              </Text>
-              <Text style={styles.ticketSeatHint}>
-                Keep this ready before you move into the entry lane.
-              </Text>
+              <View style={styles.walletBarcodeArea}>
+                <View style={styles.walletBarcodeBars}>
+                  {Array.from({ length: 28 }).map((_, index) => (
+                    <View
+                      key={index}
+                      style={[
+                        styles.walletBarcodeBar,
+                        { height: index % 4 === 0 ? 30 : index % 3 === 0 ? 22 : 26 },
+                      ]}
+                    />
+                  ))}
+                </View>
+                <Text style={styles.walletBarcodeCaption}>Keep this visible before you move into the entry lane.</Text>
+              </View>
             </View>
 
             <TouchableOpacity
-              style={styles.ticketSheetPrimaryButton}
+              style={styles.ticketOverlayPrimaryButton}
               activeOpacity={0.9}
-              onPress={() => {
-                setShowTicketReadySheet(false);
-                navigation.navigate('Ticket');
-              }}
+              onPress={handleContinueFromTicketOverlay}
             >
               <LinearGradient
                 colors={[COLORS.maize, '#E5B800']}
@@ -372,19 +441,16 @@ export default function GameDayHomeScreen({ navigation }) {
                 style={StyleSheet.absoluteFill}
                 borderRadius={RADIUS.lg}
               />
-              <Text style={styles.ticketSheetPrimaryText}>Open Ticket</Text>
+              <Text style={styles.ticketOverlayPrimaryText}>Continue to Walk Assist</Text>
               <ChevronRight size={18} color={COLORS.blue} />
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.ticketSheetSecondaryButton}
+              style={styles.ticketOverlaySecondaryButton}
               activeOpacity={0.88}
-              onPress={() => {
-                setShowTicketReadySheet(false);
-                advanceToNextAvailablePhase();
-              }}
+              onPress={handleDismissTicketOverlay}
             >
-              <Text style={styles.ticketSheetSecondaryText}>Continue to Pre-Game</Text>
+              <Text style={styles.ticketOverlaySecondaryText}>Dismiss</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -398,7 +464,7 @@ export default function GameDayHomeScreen({ navigation }) {
  * This is the meat of the experience - each phase shows
  * completely different, relevant information.
  */
-function renderPhaseContent(phase, user, currentGame, navigation) {
+function renderPhaseContent(phase, user, currentGame, navigation, openTicketOverlay) {
   switch (phase) {
     case 'morning':
       return <MorningContent user={user} currentGame={currentGame} />;
@@ -407,7 +473,7 @@ function renderPhaseContent(phase, user, currentGame, navigation) {
     case 'travel':
       return <TravelContent user={user} />;
     case 'parking':
-      return <ParkingContent user={user} navigation={navigation} />;
+      return <ParkingContent user={user} navigation={navigation} openTicketOverlay={openTicketOverlay} />;
     case 'pregame':
       return <PregameContent user={user} currentGame={currentGame} />;
     case 'ingame':
@@ -678,7 +744,7 @@ const LOT_OCCUPANCY = [
   [1,0,1,1,1,1,0,1,1,1], // G — user is index 1 (overridden)
 ];
 
-function ParkingContent({ user, navigation }) {
+function ParkingContent({ user, navigation, openTicketOverlay }) {
   const {
     parkingAssistSession,
     openParkingAssist,
@@ -867,6 +933,33 @@ function ParkingContent({ user, navigation }) {
 
       <View style={phaseStyles.divider} />
 
+      {parkingAssistSession.status === 'complete' && walkAssistSession.status !== 'complete' ? (
+        <>
+          <View style={phaseStyles.infoBlock}>
+            <View style={phaseStyles.infoBlockHeader}>
+              <Ticket size={18} color={COLORS.maize} />
+              <Text style={phaseStyles.infoBlockTitle}>ENTRY PASS</Text>
+            </View>
+            <View style={phaseStyles.entryPassCard}>
+              <Text style={phaseStyles.entryPassTitle}>Bring your pass forward before the walk.</Text>
+              <Text style={phaseStyles.entryPassBody}>
+                Your ticket is staged for Gate 4. Review it here, then move into the live walk assist when you are ready.
+              </Text>
+              <TouchableOpacity
+                style={phaseStyles.entryPassButton}
+                activeOpacity={0.88}
+                onPress={openTicketOverlay}
+              >
+                <Text style={phaseStyles.entryPassButtonText}>View Entry Pass</Text>
+                <ChevronRight size={16} color={COLORS.maize} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={phaseStyles.divider} />
+        </>
+      ) : null}
+
       {/* Walk to Stadium */}
       <View style={phaseStyles.infoBlock}>
         <View style={phaseStyles.infoBlockHeader}>
@@ -895,6 +988,75 @@ function ParkingContent({ user, navigation }) {
 }
 
 function PregameContent({ user, currentGame }) {
+  const { walkAssistSession } = useApp();
+
+  if (walkAssistSession.status === 'complete') {
+    return (
+      <View style={phaseStyles.content}>
+        <View style={phaseStyles.infoBlock}>
+          <View style={phaseStyles.infoBlockHeader}>
+            <Shield size={18} color={COLORS.maize} />
+            <Text style={phaseStyles.infoBlockTitle}>ENTRY HANDOFF</Text>
+          </View>
+          <Text style={phaseStyles.bigText}>Gate 4 Ready</Text>
+          <Text style={phaseStyles.subtitleText}>
+            You are at the gate. Keep your pass visible and move through the premium entry lane.
+          </Text>
+        </View>
+
+        <View style={phaseStyles.divider} />
+
+        <View style={phaseStyles.infoBlock}>
+          <View style={phaseStyles.infoBlockHeader}>
+            <Clock size={18} color={COLORS.textSecondary} />
+            <Text style={phaseStyles.infoBlockTitle}>RIGHT NOW</Text>
+          </View>
+          <View style={phaseStyles.walkStats}>
+            <View style={phaseStyles.walkStatItem}>
+              <Text style={phaseStyles.walkStatValue}>Gate 4</Text>
+              <Text style={phaseStyles.walkStatUnit}>entry lane</Text>
+            </View>
+            <View style={phaseStyles.etaDivider} />
+            <View style={phaseStyles.walkStatItem}>
+              <Text style={phaseStyles.walkStatValue}>24</Text>
+              <Text style={phaseStyles.walkStatUnit}>section</Text>
+            </View>
+            <View style={phaseStyles.etaDivider} />
+            <View style={phaseStyles.walkStatItem}>
+              <Text style={phaseStyles.walkStatValue}>32</Text>
+              <Text style={phaseStyles.walkStatUnit}>min to kick</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={phaseStyles.divider} />
+
+        <View style={phaseStyles.infoBlock}>
+          <View style={phaseStyles.infoBlockHeader}>
+            <MapPin size={18} color={COLORS.textSecondary} />
+            <Text style={phaseStyles.infoBlockTitle}>SEAT COMMAND</Text>
+          </View>
+          <View style={phaseStyles.seatDisplay}>
+            <View style={phaseStyles.seatItem}>
+              <Text style={phaseStyles.seatLabel}>SEC</Text>
+              <Text style={phaseStyles.seatValue}>{user.seat.section}</Text>
+            </View>
+            <View style={phaseStyles.seatDivider} />
+            <View style={phaseStyles.seatItem}>
+              <Text style={phaseStyles.seatLabel}>ROW</Text>
+              <Text style={phaseStyles.seatValue}>{user.seat.row}</Text>
+            </View>
+            <View style={phaseStyles.seatDivider} />
+            <View style={phaseStyles.seatItem}>
+              <Text style={phaseStyles.seatLabel}>SEAT</Text>
+              <Text style={phaseStyles.seatValue}>{user.seat.seat}</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={phaseStyles.content}>
       <View style={phaseStyles.infoBlock}>
@@ -1351,70 +1513,75 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat_700Bold',
     letterSpacing: 1,
   },
-  ticketSheetOverlay: {
+  ticketOverlay: {
     flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.42)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.94)',
   },
-  ticketSheet: {
+  ticketOverlayInner: {
+    width: Math.min(width - SPACING.xl * 2, 380),
+    alignItems: 'stretch',
+  },
+  walletPass: {
     overflow: 'hidden',
-    borderTopLeftRadius: RADIUS.xl,
-    borderTopRightRadius: RADIUS.xl,
+    borderRadius: 28,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
-    backgroundColor: 'rgba(5,16,31,0.96)',
-    paddingHorizontal: SPACING.l,
-    paddingTop: SPACING.s,
-    paddingBottom: Platform.OS === 'ios' ? 36 : SPACING.l,
+    padding: SPACING.l,
+    marginBottom: SPACING.m,
+    minHeight: 440,
   },
-  ticketSheetHandle: {
-    width: 52,
+  walletPassAccent: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     height: 5,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignSelf: 'center',
-    marginBottom: SPACING.m,
+    backgroundColor: COLORS.maize,
   },
-  ticketSheetHeader: {
-    marginBottom: SPACING.m,
+  walletPassHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: SPACING.m,
+    marginBottom: SPACING.l,
   },
-  ticketSheetBadge: {
+  walletPassEyebrow: {
+    color: COLORS.maize,
+    fontSize: TYPOGRAPHY.fontSize.xs,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 1.1,
+    marginBottom: 6,
+  },
+  walletPassTitle: {
+    color: COLORS.text,
+    fontSize: 28,
+    lineHeight: 32,
+    fontFamily: 'Montserrat_700Bold',
+  },
+  walletPassBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
     gap: 6,
     backgroundColor: COLORS.maize,
     borderRadius: RADIUS.full,
-    paddingHorizontal: SPACING.s,
-    paddingVertical: 6,
-    marginBottom: SPACING.s,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
   },
-  ticketSheetBadgeText: {
+  walletPassBadgeText: {
     color: COLORS.blue,
     fontSize: TYPOGRAPHY.fontSize.xs,
     fontFamily: 'Montserrat_700Bold',
     letterSpacing: 0.9,
   },
-  ticketSheetTitle: {
-    color: COLORS.text,
-    fontSize: TYPOGRAPHY.fontSize.xl,
-    lineHeight: 30,
-    fontFamily: 'Montserrat_700Bold',
-    marginBottom: SPACING.xs,
-  },
-  ticketSheetBody: {
-    color: COLORS.textSecondary,
-    fontSize: TYPOGRAPHY.fontSize.sm,
-    lineHeight: 20,
-    fontFamily: 'AtkinsonHyperlegible_400Regular',
-  },
-  ticketSheetMetaRow: {
+  walletMetaRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: SPACING.xs,
     marginBottom: SPACING.m,
   },
-  ticketMetaChip: {
+  walletMetaChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -1425,40 +1592,69 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 7,
   },
-  ticketMetaChipText: {
+  walletMetaChipText: {
     color: COLORS.text,
     fontSize: TYPOGRAPHY.fontSize.xs,
     fontFamily: 'Montserrat_600SemiBold',
   },
-  ticketSeatCard: {
+  walletSeatRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
     borderRadius: RADIUS.lg,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
     backgroundColor: 'rgba(255,255,255,0.05)',
-    padding: SPACING.m,
-    marginBottom: SPACING.m,
+    overflow: 'hidden',
+    marginBottom: SPACING.l,
   },
-  ticketSeatLabel: {
+  walletSeatBlock: {
+    flex: 1,
+    paddingVertical: SPACING.m,
+    paddingHorizontal: SPACING.s,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  walletSeatDivider: {
+    width: 1,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  walletSeatLabel: {
     color: COLORS.textTertiary,
     fontSize: TYPOGRAPHY.fontSize.xs,
     fontFamily: 'Montserrat_700Bold',
     letterSpacing: 1,
     marginBottom: 6,
   },
-  ticketSeatValue: {
+  walletSeatValue: {
     color: COLORS.text,
-    fontSize: TYPOGRAPHY.fontSize.base,
-    lineHeight: 22,
+    fontSize: TYPOGRAPHY.fontSize.xl,
     fontFamily: 'Montserrat_700Bold',
-    marginBottom: 6,
   },
-  ticketSeatHint: {
+  walletBarcodeArea: {
+    marginTop: 'auto',
+    paddingTop: SPACING.l,
+  },
+  walletBarcodeBars: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: 4,
+    minHeight: 34,
+    marginBottom: SPACING.s,
+  },
+  walletBarcodeBar: {
+    flex: 1,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+  },
+  walletBarcodeCaption: {
     color: COLORS.textSecondary,
     fontSize: TYPOGRAPHY.fontSize.sm,
     lineHeight: 18,
     fontFamily: 'AtkinsonHyperlegible_400Regular',
+    textAlign: 'center',
   },
-  ticketSheetPrimaryButton: {
+  ticketOverlayPrimaryButton: {
     minHeight: 56,
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
@@ -1468,13 +1664,13 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: SPACING.s,
   },
-  ticketSheetPrimaryText: {
+  ticketOverlayPrimaryText: {
     color: COLORS.blue,
     fontSize: TYPOGRAPHY.fontSize.base,
     fontFamily: 'Montserrat_700Bold',
     letterSpacing: 0.6,
   },
-  ticketSheetSecondaryButton: {
+  ticketOverlaySecondaryButton: {
     minHeight: 48,
     borderRadius: RADIUS.lg,
     borderWidth: 1,
@@ -1483,7 +1679,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.04)',
   },
-  ticketSheetSecondaryText: {
+  ticketOverlaySecondaryText: {
     color: COLORS.textSecondary,
     fontSize: TYPOGRAPHY.fontSize.sm,
     fontFamily: 'Montserrat_600SemiBold',
@@ -1513,6 +1709,44 @@ const phaseStyles = StyleSheet.create({
     fontSize: TYPOGRAPHY.fontSize.xs,
     fontFamily: 'Montserrat_700Bold',
     letterSpacing: 1.5,
+  },
+  entryPassCard: {
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,203,5,0.22)',
+    backgroundColor: 'rgba(255,203,5,0.08)',
+    padding: SPACING.m,
+  },
+  entryPassTitle: {
+    color: COLORS.text,
+    fontSize: TYPOGRAPHY.fontSize.base,
+    lineHeight: 22,
+    fontFamily: 'Montserrat_700Bold',
+    marginBottom: SPACING.xs,
+  },
+  entryPassBody: {
+    color: COLORS.textSecondary,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    lineHeight: 20,
+    fontFamily: 'AtkinsonHyperlegible_400Regular',
+    marginBottom: SPACING.m,
+  },
+  entryPassButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: RADIUS.full,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  entryPassButtonText: {
+    color: COLORS.maize,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    fontFamily: 'Montserrat_600SemiBold',
   },
 
   // Divider

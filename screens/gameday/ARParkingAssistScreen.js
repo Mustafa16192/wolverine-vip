@@ -91,14 +91,14 @@ export default function ARParkingAssistScreen({ navigation }) {
   const autoRequestedRef = useRef(false);
 
   const {
+    goToPhase,
     user,
     parkingAssistSteps,
     parkingAssistSession,
     advanceParkingAssist,
     fallbackParkingAssistToMap,
-    completeParkingAssist,
+    completeParkingAssistJourney,
     resetParkingAssist,
-    openWalkAssist,
   } = useApp();
 
   const currentStep = parkingAssistSteps[parkingAssistSession.stepIndex] || parkingAssistSteps[0];
@@ -119,12 +119,14 @@ export default function ARParkingAssistScreen({ navigation }) {
   }, [isFocused, permission?.granted, requestPermission]);
 
   const handleBack = () => {
-    navigation.navigate('ParkingPhase');
+    goToPhase('parking');
+    navigation.navigate('GameDayHome');
   };
 
   const handleMapFallback = () => {
     fallbackParkingAssistToMap();
-    navigation.navigate('ParkingPhase');
+    goToPhase('parking');
+    navigation.navigate('GameDayHome');
   };
 
   const handleRetryPermission = async () => {
@@ -138,14 +140,15 @@ export default function ARParkingAssistScreen({ navigation }) {
 
   const handlePrimaryAction = async () => {
     if (parkingAssistSession.status === 'complete') {
-      openWalkAssist();
-      navigation.navigate('ARWalkToGate');
+      goToPhase('parking');
+      navigation.navigate('GameDayHome');
       return;
     }
 
     if (isFinalStep) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      completeParkingAssist();
+      completeParkingAssistJourney();
+      navigation.navigate('GameDayHome');
       return;
     }
 
@@ -286,10 +289,10 @@ export default function ARParkingAssistScreen({ navigation }) {
                 <>
                   <Text style={styles.sheetEyebrow}>ARRIVAL LOCKED</Text>
                   <Text style={styles.sheetTitle}>Parked in {user.parking.spot}</Text>
-                  <Text style={styles.sheetDetail}>Gold Lot A is confirmed. The next move is the live walk assist to Gate 4.</Text>
+                  <Text style={styles.sheetDetail}>Gold Lot A is confirmed. Return to the journey to bring your entry pass forward before the walk.</Text>
 
                   <TouchableOpacity style={styles.primaryButton} activeOpacity={0.9} onPress={handlePrimaryAction}>
-                    <Text style={styles.primaryButtonText}>START WALK ASSIST</Text>
+                    <Text style={styles.primaryButtonText}>RETURN TO JOURNEY</Text>
                     <ChevronRight size={18} color={COLORS.blue} />
                   </TouchableOpacity>
 

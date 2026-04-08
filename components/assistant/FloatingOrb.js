@@ -130,10 +130,7 @@ export default function FloatingOrb() {
         {isThinking ? (
           <ActivityIndicator size="small" color={COLORS.maize} />
         ) : (
-          <View style={styles.iconRow}>
-            <Sparkles size={18} color={COLORS.maize} />
-            <Mic size={15} color={COLORS.textSecondary} />
-          </View>
+          <Sparkles size={24} color={COLORS.maize} />
         )}
       </Pressable>
     </Animated.View>
@@ -146,7 +143,7 @@ const styles = StyleSheet.create({
     borderRadius: ORB_SIZE / 2,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: CHROME.surface.border,
+    borderColor: 'rgba(255,203,5,0.4)',
     ...SHADOWS.xl,
     zIndex: 120,
   },
@@ -154,19 +151,5 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  iconRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  unreadDot: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.maize,
   },
 });

@@ -145,6 +145,7 @@ export function AppProvider({ children }) {
   const [currentGame, setCurrentGame] = useState(null);
   const [nextGame, setNextGame] = useState(null);
   const [gameDayPhase, setGameDayPhase] = useState('morning'); // morning, tailgate, travel, parking, pregame, ingame, postgame, home
+  const [journeyOverlay, setJourneyOverlay] = useState(null);
   const [parkingAssistSession, setParkingAssistSession] = useState({
     status: 'idle',
     stepIndex: 0,
@@ -229,12 +230,14 @@ export function AppProvider({ children }) {
     setManualModeOverride(true);
     setIsGameDay(true);
     setGameDayPhase(phase);
+    setJourneyOverlay(null);
   };
 
   const exitGameDay = () => {
     setManualModeOverride(false);
     setIsGameDay(false);
     setGameDayPhase('morning');
+    setJourneyOverlay(null);
     setParkingAssistSession({
       status: 'idle',
       stepIndex: 0,
@@ -257,6 +260,14 @@ export function AppProvider({ children }) {
 
   const goToPhase = (phase) => {
     setGameDayPhase(phase);
+  };
+
+  const openJourneyOverlay = (overlay) => {
+    setJourneyOverlay(overlay);
+  };
+
+  const closeJourneyOverlay = () => {
+    setJourneyOverlay(null);
   };
 
   const openParkingAssist = () => {
@@ -309,15 +320,27 @@ export function AppProvider({ children }) {
     });
   };
 
+  const completeParkingAssistJourney = () => {
+    setParkingAssistSession({
+      status: 'complete',
+      stepIndex: PARKING_ASSIST_STEPS.length - 1,
+      completedAt: new Date().toISOString(),
+    });
+    setGameDayPhase('parking');
+    setJourneyOverlay('ticket_ready');
+  };
+
   const resetParkingAssist = () => {
     setParkingAssistSession({
       status: 'idle',
       stepIndex: 0,
       completedAt: null,
     });
+    setJourneyOverlay(null);
   };
 
   const openWalkAssist = () => {
+    setJourneyOverlay(null);
     setWalkAssistSession((prev) => {
       if (prev.status === 'live' || prev.status === 'complete') {
         return prev;
@@ -360,6 +383,16 @@ export function AppProvider({ children }) {
     });
   };
 
+  const completeWalkAssistJourney = () => {
+    setWalkAssistSession({
+      status: 'complete',
+      stepIndex: WALK_TO_GATE_STEPS.length - 1,
+      completedAt: new Date().toISOString(),
+    });
+    setGameDayPhase('pregame');
+    setJourneyOverlay(null);
+  };
+
   const resetWalkAssist = () => {
     setWalkAssistSession({
       status: 'idle',
@@ -384,8 +417,11 @@ export function AppProvider({ children }) {
 
     // Game day phases
     gameDayPhase,
+    journeyOverlay,
     advancePhase,
     goToPhase,
+    openJourneyOverlay,
+    closeJourneyOverlay,
 
     // Parking assist
     parkingAssistSteps: PARKING_ASSIST_STEPS,
@@ -395,6 +431,7 @@ export function AppProvider({ children }) {
     advanceParkingAssist,
     fallbackParkingAssistToMap,
     completeParkingAssist,
+    completeParkingAssistJourney,
     resetParkingAssist,
 
     // Walk assist
@@ -404,6 +441,7 @@ export function AppProvider({ children }) {
     advanceWalkAssist,
     fallbackWalkAssistToMap,
     completeWalkAssist,
+    completeWalkAssistJourney,
     resetWalkAssist,
 
     // User data
