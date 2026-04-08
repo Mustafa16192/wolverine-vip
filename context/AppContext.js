@@ -10,6 +10,66 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const AppContext = createContext();
 const GAME_DAY_PHASES = ['morning', 'tailgate', 'travel', 'parking', 'pregame', 'ingame', 'postgame', 'home'];
+const PARKING_ASSIST_STEPS = [
+  {
+    id: 'lot-entry',
+    title: 'Stay left into Gold Lot A',
+    detail: 'Enter the premium lane and hold left toward Row G.',
+    cue: 'left',
+    landmark: 'Lot entrance',
+  },
+  {
+    id: 'row-turn',
+    title: 'Turn right for Row G',
+    detail: 'Take the next right once the Row G marker lines up.',
+    cue: 'right',
+    landmark: 'Row G',
+  },
+  {
+    id: 'final-approach',
+    title: 'Three spaces ahead',
+    detail: 'Your reserved space is ahead on the right.',
+    cue: 'straight',
+    landmark: 'Spot marker',
+  },
+  {
+    id: 'park-here',
+    title: 'Park in G-142',
+    detail: 'Stop once your spot marker centers on screen.',
+    cue: 'park',
+    landmark: 'G-142',
+  },
+];
+const WALK_TO_GATE_STEPS = [
+  {
+    id: 'lot-exit',
+    title: 'Exit via Main Entrance',
+    detail: 'Walk straight out of Gold Lot A toward the main lot exit.',
+    cue: 'straight',
+    landmark: 'Main Entrance',
+  },
+  {
+    id: 'stadium-turn',
+    title: 'Turn right on Stadium Blvd',
+    detail: 'Keep the stadium on your left and take the right turn onto Stadium Blvd.',
+    cue: 'right',
+    landmark: 'Stadium Blvd',
+  },
+  {
+    id: 'gate-lane',
+    title: 'Hold the Gate 4 lane',
+    detail: 'Stay in the right-side pedestrian lane leading directly to Gate 4.',
+    cue: 'straight',
+    landmark: 'Gate 4 lane',
+  },
+  {
+    id: 'gate-arrival',
+    title: 'Gate 4 is ahead',
+    detail: 'Step into the entry queue once the Gate 4 marker is centered.',
+    cue: 'gate',
+    landmark: 'Gate 4',
+  },
+];
 
 const INTENT_PHASE_MAP = {
   parking: 'parking',
@@ -85,6 +145,16 @@ export function AppProvider({ children }) {
   const [currentGame, setCurrentGame] = useState(null);
   const [nextGame, setNextGame] = useState(null);
   const [gameDayPhase, setGameDayPhase] = useState('morning'); // morning, tailgate, travel, parking, pregame, ingame, postgame, home
+  const [parkingAssistSession, setParkingAssistSession] = useState({
+    status: 'idle',
+    stepIndex: 0,
+    completedAt: null,
+  });
+  const [walkAssistSession, setWalkAssistSession] = useState({
+    status: 'idle',
+    stepIndex: 0,
+    completedAt: null,
+  });
 
   const resolvePhaseByTime = (referenceGame) => {
     const kickoff = parseKickoffDate(referenceGame);
@@ -165,6 +235,16 @@ export function AppProvider({ children }) {
     setManualModeOverride(false);
     setIsGameDay(false);
     setGameDayPhase('morning');
+    setParkingAssistSession({
+      status: 'idle',
+      stepIndex: 0,
+      completedAt: null,
+    });
+    setWalkAssistSession({
+      status: 'idle',
+      stepIndex: 0,
+      completedAt: null,
+    });
   };
 
   // Game day phase progression
@@ -177,6 +257,115 @@ export function AppProvider({ children }) {
 
   const goToPhase = (phase) => {
     setGameDayPhase(phase);
+  };
+
+  const openParkingAssist = () => {
+    setParkingAssistSession((prev) => {
+      if (prev.status === 'live' || prev.status === 'complete') {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        status: 'live',
+        stepIndex: prev.status === 'idle' ? 0 : prev.stepIndex,
+      };
+    });
+  };
+
+  const beginParkingAssistLive = () => {
+    setParkingAssistSession((prev) => ({
+      ...prev,
+      status: 'live',
+    }));
+  };
+
+  const advanceParkingAssist = () => {
+    setParkingAssistSession((prev) => {
+      const nextIndex = Math.min(prev.stepIndex + 1, PARKING_ASSIST_STEPS.length - 1);
+      const isComplete = nextIndex === PARKING_ASSIST_STEPS.length - 1 && prev.stepIndex === nextIndex;
+
+      return {
+        ...prev,
+        status: isComplete ? 'complete' : 'live',
+        stepIndex: nextIndex,
+        completedAt: isComplete ? new Date().toISOString() : prev.completedAt,
+      };
+    });
+  };
+
+  const fallbackParkingAssistToMap = () => {
+    setParkingAssistSession((prev) => ({
+      ...prev,
+      status: 'fallback',
+    }));
+  };
+
+  const completeParkingAssist = () => {
+    setParkingAssistSession({
+      status: 'complete',
+      stepIndex: PARKING_ASSIST_STEPS.length - 1,
+      completedAt: new Date().toISOString(),
+    });
+  };
+
+  const resetParkingAssist = () => {
+    setParkingAssistSession({
+      status: 'idle',
+      stepIndex: 0,
+      completedAt: null,
+    });
+  };
+
+  const openWalkAssist = () => {
+    setWalkAssistSession((prev) => {
+      if (prev.status === 'live' || prev.status === 'complete') {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        status: 'live',
+        stepIndex: prev.status === 'idle' ? 0 : prev.stepIndex,
+      };
+    });
+  };
+
+  const advanceWalkAssist = () => {
+    setWalkAssistSession((prev) => {
+      const nextIndex = Math.min(prev.stepIndex + 1, WALK_TO_GATE_STEPS.length - 1);
+      const isComplete = nextIndex === WALK_TO_GATE_STEPS.length - 1 && prev.stepIndex === nextIndex;
+
+      return {
+        ...prev,
+        status: isComplete ? 'complete' : 'live',
+        stepIndex: nextIndex,
+        completedAt: isComplete ? new Date().toISOString() : prev.completedAt,
+      };
+    });
+  };
+
+  const fallbackWalkAssistToMap = () => {
+    setWalkAssistSession((prev) => ({
+      ...prev,
+      status: 'fallback',
+    }));
+  };
+
+  const completeWalkAssist = () => {
+    setWalkAssistSession({
+      status: 'complete',
+      stepIndex: WALK_TO_GATE_STEPS.length - 1,
+      completedAt: new Date().toISOString(),
+    });
+  };
+
+  const resetWalkAssist = () => {
+    setWalkAssistSession({
+      status: 'idle',
+      stepIndex: 0,
+      completedAt: null,
+    });
   };
 
   const value = {
@@ -197,6 +386,25 @@ export function AppProvider({ children }) {
     gameDayPhase,
     advancePhase,
     goToPhase,
+
+    // Parking assist
+    parkingAssistSteps: PARKING_ASSIST_STEPS,
+    parkingAssistSession,
+    openParkingAssist,
+    beginParkingAssistLive,
+    advanceParkingAssist,
+    fallbackParkingAssistToMap,
+    completeParkingAssist,
+    resetParkingAssist,
+
+    // Walk assist
+    walkAssistSteps: WALK_TO_GATE_STEPS,
+    walkAssistSession,
+    openWalkAssist,
+    advanceWalkAssist,
+    fallbackWalkAssistToMap,
+    completeWalkAssist,
+    resetWalkAssist,
 
     // User data
     user: USER_PROFILE,

@@ -5,6 +5,7 @@ import {
   NavigationContainer,
   DefaultTheme,
   createNavigationContainerRef,
+  getFocusedRouteNameFromRoute,
 } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -44,6 +45,8 @@ import MorningPhase from './screens/gameday/MorningPhase';
 import TailgatePhase from './screens/gameday/TailgatePhase';
 import TravelPhase from './screens/gameday/TravelPhase';
 import ParkingPhase from './screens/gameday/ParkingPhase';
+import ARParkingAssistScreen from './screens/gameday/ARParkingAssistScreen';
+import ARWalkToGateScreen from './screens/gameday/ARWalkToGateScreen';
 import PregamePhase from './screens/gameday/PregamePhase';
 import IngamePhase from './screens/gameday/IngamePhase';
 import PostgamePhase from './screens/gameday/PostgamePhase';
@@ -78,6 +81,22 @@ const NavTheme = {
   },
 };
 
+const BASE_TAB_BAR_STYLE = {
+  position: 'absolute',
+  left: 0,
+  right: 0,
+  bottom: 0,
+  borderTopWidth: StyleSheet.hairlineWidth,
+  borderTopColor: 'rgba(255,255,255,0.15)',
+  backgroundColor: 'transparent',
+  height: Platform.OS === 'ios' ? 88 : 68,
+  paddingTop: 10,
+  paddingBottom: Platform.OS === 'ios' ? 28 : 10,
+  elevation: 0,
+  overflow: 'hidden',
+};
+const IMMERSIVE_ROUTES = new Set(['ARParkingAssist', 'ARWalkToGate']);
+
 /**
  * Home Stack
  * Keeps dashboard + game day journey in one continuous app experience.
@@ -99,6 +118,8 @@ function HomeNavigator() {
       <HomeStack.Screen name="TailgatePhase" component={TailgatePhase} />
       <HomeStack.Screen name="TravelPhase" component={TravelPhase} />
       <HomeStack.Screen name="ParkingPhase" component={ParkingPhase} />
+      <HomeStack.Screen name="ARParkingAssist" component={ARParkingAssistScreen} />
+      <HomeStack.Screen name="ARWalkToGate" component={ARWalkToGateScreen} />
       <HomeStack.Screen name="PregamePhase" component={PregamePhase} />
       <HomeStack.Screen name="IngamePhase" component={IngamePhase} />
       <HomeStack.Screen name="PostgamePhase" component={PostgamePhase} />
@@ -117,28 +138,9 @@ function MainTabs() {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarStyle: {
-          position: 'absolute',
-          left: 18,
-          right: 18,
-          bottom: Platform.OS === 'ios' ? 24 : 12,
-          borderTopWidth: 0,
-          borderWidth: 1,
-          borderColor: CHROME.dock.border,
-          borderRadius: 34,
-          backgroundColor: CHROME.dock.background,
-          height: Platform.OS === 'ios' ? 66 : 58,
-          paddingTop: 8,
-          paddingBottom: Platform.OS === 'ios' ? 14 : 8,
-          elevation: 0,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 10 },
-          shadowOpacity: 0.22,
-          shadowRadius: 16,
-          overflow: 'hidden',
-        },
+        tabBarStyle: BASE_TAB_BAR_STYLE,
         tabBarBackground: () => (
-          <BlurView intensity={34} tint="dark" style={StyleSheet.absoluteFill} />
+          <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
         ),
         tabBarActiveTintColor: COLORS.maize,
         tabBarInactiveTintColor: 'rgba(255,255,255,0.58)',
@@ -151,11 +153,17 @@ function MainTabs() {
       <Tab.Screen
         name="Home"
         component={HomeNavigator}
-        options={{
-          tabBarIcon: ({ color, focused }) => (
-            <Home color={color} size={24} strokeWidth={focused ? 2.5 : 2} />
-          ),
-          tabBarLabel: 'HOME',
+        options={({ route }) => {
+          const nestedRouteName = getFocusedRouteNameFromRoute(route) ?? 'Dashboard';
+          const immersiveMode = IMMERSIVE_ROUTES.has(nestedRouteName);
+
+          return {
+            tabBarStyle: immersiveMode ? { display: 'none' } : BASE_TAB_BAR_STYLE,
+            tabBarIcon: ({ color, focused }) => (
+              <Home color={color} size={26} strokeWidth={focused ? 2.5 : 2} />
+            ),
+            tabBarLabel: 'HOME',
+          };
         }}
       />
       <Tab.Screen
@@ -163,7 +171,7 @@ function MainTabs() {
         component={StatsScreen}
         options={{
           tabBarIcon: ({ color, focused }) => (
-            <BarChart3 color={color} size={24} strokeWidth={focused ? 2.5 : 2} />
+            <BarChart3 color={color} size={26} strokeWidth={focused ? 2.5 : 2} />
           ),
           tabBarLabel: 'STATS',
         }}
@@ -173,7 +181,7 @@ function MainTabs() {
         component={TicketScreen}
         options={{
           tabBarIcon: ({ color, focused }) => (
-            <Ticket color={color} size={24} strokeWidth={focused ? 2.5 : 2} />
+            <Ticket color={color} size={26} strokeWidth={focused ? 2.5 : 2} />
           ),
           tabBarLabel: 'TICKET',
         }}
@@ -183,7 +191,7 @@ function MainTabs() {
         component={NewsScreen}
         options={{
           tabBarIcon: ({ color, focused }) => (
-            <Newspaper color={color} size={24} strokeWidth={focused ? 2.5 : 2} />
+            <Newspaper color={color} size={26} strokeWidth={focused ? 2.5 : 2} />
           ),
           tabBarLabel: 'NEWS',
         }}
@@ -193,7 +201,7 @@ function MainTabs() {
         component={ShopScreen}
         options={{
           tabBarIcon: ({ color, focused }) => (
-            <ShoppingBag color={color} size={24} strokeWidth={focused ? 2.5 : 2} />
+            <ShoppingBag color={color} size={26} strokeWidth={focused ? 2.5 : 2} />
           ),
           tabBarLabel: 'SHOP',
         }}
@@ -209,6 +217,7 @@ export default function App() {
   const [routeName, setRouteName] = useState('Dashboard');
   const navigationRef = useMemo(() => createNavigationContainerRef(), []);
   const assistantEnabled = process.env.EXPO_PUBLIC_ASSISTANT_ENABLED !== 'false';
+  const immersiveMode = IMMERSIVE_ROUTES.has(routeName);
 
   let [fontsLoaded] = useFonts({
     AtkinsonHyperlegible_400Regular,
@@ -250,8 +259,8 @@ export default function App() {
             >
               <StatusBar style="light" />
               <MainTabs />
-              <AssistantPanel />
-              <FloatingOrb />
+              {!immersiveMode ? <AssistantPanel /> : null}
+              {!immersiveMode ? <FloatingOrb /> : null}
             </NavigationContainer>
           </AssistantProvider>
         </GameProvider>

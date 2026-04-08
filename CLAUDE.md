@@ -27,10 +27,27 @@ npx expo start --web          # Web browser
 
 5-tab bottom navigator (Home, Stats, Ticket, News, Shop) with a Home stack containing the dashboard, game day phases, and detail screens. Tab bar is a floating pill with blur backdrop.
 
+Additional screens in the Home stack not part of the main flow: `LauncherScreen`, `RenewalScreen`, `WidgetScreen`, `ARParkingAssistScreen`, `ARWalkToGateScreen`.
+
 ### Context Providers
 
 - `useApp()` from `context/AppContext.js` — mode, schedule, user profile, phase progression
 - `useGame()` from `context/GameContext.js` — simulation time, game states, auto-advance
+- `useAssistant()` from `context/AssistantContext.js` — AI assistant panel state, conversation history, proactive suggestions, action execution
+
+### Assistant Subsystem (`assistant/`)
+
+A full AI concierge layer that sends context-aware prompts to a proxy server (default `localhost:8787/assistant/respond`) with a mock fallback. Configure the proxy URL via `EXPO_PUBLIC_ASSISTANT_PROXY_URL`.
+
+- `contextBuilder.js` — builds a typed `AppSnapshot` (route, isGameDay, phase, game, user) and per-route proactive suggestions. Proactive cooldown: 10 minutes.
+- `actionExecutor.js` — executes typed action commands: `navigate.*`, `open.liveOpsDetail`, `gameDay.enter/exit/goToPhase`, `ticket.flipPass`, `news.setFilter`, `shop.setCategory`
+- `commandRegistry.js` — normalizes raw action objects from the AI response
+- `policy.js` — risk classification (`low` vs `high`). Low-risk actions (all current navigate/gameDay/ticket/news/shop commands) auto-execute; high-risk ones (payment.*, account.*) are blocked pending confirmation
+- `ticketFlipBridge.js` — event bridge that triggers the QR flip animation on TicketScreen
+- `service/assistantClient.js` — POST to proxy with `{ systemPrompt, input, snapshot }`
+- `service/mockAssistantClient.js` — offline fallback responses
+
+Assistant UI lives in `components/assistant/`: `FloatingOrb` (entry point), `AssistantPanel` (chat drawer), `VoiceInputControl`, `CameraInputControl`, `ResponseCard`.
 
 ### Theme (`constants/theme.js`)
 
@@ -54,3 +71,4 @@ Exports: `COLORS`, `TYPOGRAPHY`, `SPACING`, `RADIUS`, `SHADOWS`, `CHROME`, `ACCE
 - Animations: React Native `Animated` API only (no reanimated/moti — not installed)
 - Fonts: `TYPOGRAPHY.fontFamily.heading` / `TYPOGRAPHY.fontFamily.body`
 - Wrap cards in `<BentoCard>`, use `<AppBackground>` for screen backgrounds
+- New assistant action types must be added to both `actionExecutor.js` (handler) and `policy.js` (risk classification)

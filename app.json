@@ -13,6 +13,9 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
+      "infoPlist": {
+        "NSCameraUsageDescription": "Wolverine VIP uses the camera to guide your final parking approach into the correct lot, row, and spot."
+      },
       "supportsTablet": true
     },
     "android": {
@@ -20,7 +23,10 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"

@@ -19,7 +19,7 @@ Wolverine VIP is a premium companion app for University of Michigan season ticke
 Current product direction is one continuous app experience, not separate prototypes. The app keeps persistent tab navigation while dynamically shifting priority around game-day needs.
 
 The current build delivers:
-- A premium Season HQ home dashboard centered on matchup and logistics.
+- A premium Season HQ home dashboard centered on matchup and logisticc chroms.
 - A linear game-day journey with phase-by-phase screens.
 - A premium digital ticket experience with animated flip pass.
 - News, shop, and stats surfaces with rich UI and mock content.

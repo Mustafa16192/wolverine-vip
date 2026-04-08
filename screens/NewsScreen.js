@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   FlatList,
   TouchableOpacity,
   ImageBackground,
@@ -11,6 +10,7 @@ import {
   Dimensions,
   Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Clock, Bookmark, Share2, Star, ChevronRight } from 'lucide-react-native';
@@ -20,6 +20,7 @@ import { useAssistant } from '../context/AssistantContext';
 
 const { height: DEFAULT_HEIGHT } = Dimensions.get('window');
 const FILTERS = ['All', 'Exclusive', 'Analysis', 'Team News'];
+const STORY_FALLBACK_IMAGE = require('../assets/content_images/matchup_bg.jpeg');
 
 const STORIES = [
   {
@@ -89,9 +90,21 @@ function matchesFilter(story, filter) {
 
 export default function NewsScreen() {
   const listRef = useRef(null);
+  const insets = useSafeAreaInsets();
   const { selectedNewsFilter, setNewsFilter } = useAssistant();
   const [pageHeight, setPageHeight] = useState(DEFAULT_HEIGHT);
+  const [failedStoryIds, setFailedStoryIds] = useState({});
+  const [currentIndex, setCurrentIndex] = useState(0);
   const activeFilter = FILTERS.includes(selectedNewsFilter) ? selectedNewsFilter : 'All';
+  const headerTopOffset = insets.top + SPACING.s;
+  const storyTopPadding = headerTopOffset + 80;
+
+  const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
+  const onViewableItemsChanged = useRef(({ viewableItems }) => {
+    if (viewableItems.length > 0) {
+      setCurrentIndex(viewableItems[0].index ?? 0);
+    }
+  }).current;
 
   const filteredStories = useMemo(() => {
     const result = STORIES.filter(story => matchesFilter(story, activeFilter));
@@ -106,44 +119,27 @@ export default function NewsScreen() {
 
   const renderStory = ({ item, index }) => {
     const bottomInset = Platform.OS === 'ios' ? 178 : 146;
+    const storyImageSource = failedStoryIds[item.id]
+      ? STORY_FALLBACK_IMAGE
+      : { uri: item.imageUrl };
 
     return (
       <View style={[styles.storyPage, { height: pageHeight }]}>
-        <ImageBackground source={{ uri: item.imageUrl }} resizeMode="cover" style={styles.storyImage}>
+        <ImageBackground
+          source={storyImageSource}
+          resizeMode="cover"
+          style={[styles.storyImage, { paddingTop: storyTopPadding }]}
+          onError={() => {
+            setFailedStoryIds(prev => (
+              prev[item.id] ? prev : { ...prev, [item.id]: true }
+            ));
+          }}
+        >
           <LinearGradient
             colors={['rgba(0,0,0,0.15)', 'rgba(0,0,0,0.25)', 'rgba(0,0,0,0.84)']}
             locations={[0, 0.45, 1]}
             style={StyleSheet.absoluteFill}
           />
-
-          <View style={styles.storyTop}>
-            <View style={styles.storyTitleRow}>
-              <Text style={styles.storyEyebrow}>INSIDER WIRE</Text>
-              <Text style={styles.storyCounter}>{index + 1}/{filteredStories.length}</Text>
-            </View>
-
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filterRow}
-            >
-              {FILTERS.map(filter => {
-                const selected = filter === activeFilter;
-                return (
-                  <TouchableOpacity
-                    key={filter}
-                    style={[styles.filterChip, selected && styles.filterChipActive]}
-                    activeOpacity={0.85}
-                    onPress={() => setNewsFilter(filter)}
-                  >
-                    <Text style={[styles.filterText, selected && styles.filterTextActive]}>
-                      {filter}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
 
           <View style={[styles.storyBottom, { paddingBottom: bottomInset }]}>
             <BlurView intensity={26} tint="dark" style={styles.storyMetaCard}>
@@ -192,7 +188,7 @@ export default function NewsScreen() {
   return (
     <View style={styles.container}>
       <AppBackground />
-      <SafeAreaView
+      <View
         style={styles.safeArea}
         onLayout={(event) => setPageHeight(event.nativeEvent.layout.height)}
       >
@@ -207,13 +203,44 @@ export default function NewsScreen() {
           showsVerticalScrollIndicator={false}
           snapToInterval={pageHeight}
           snapToAlignment="start"
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
           getItemLayout={(_, index) => ({
             length: pageHeight,
             offset: pageHeight * index,
             index,
           })}
         />
-      </SafeAreaView>
+
+        {/* Static header overlay — chips never scroll */}
+        <View style={[styles.staticHeader, { top: headerTopOffset }]} pointerEvents="box-none">
+          <View style={styles.storyTitleRow}>
+            <Text style={styles.storyEyebrow}>INSIDER WIRE</Text>
+            <Text style={styles.storyCounter}>{currentIndex + 1}/{filteredStories.length}</Text>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterRow}
+          >
+            {FILTERS.map(filter => {
+              const selected = filter === activeFilter;
+              return (
+                <TouchableOpacity
+                  key={filter}
+                  style={[styles.filterChip, selected && styles.filterChipActive]}
+                  activeOpacity={0.85}
+                  onPress={() => setNewsFilter(filter)}
+                >
+                  <Text style={[styles.filterText, selected && styles.filterTextActive]}>
+                    {filter}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      </View>
     </View>
   );
 }
@@ -233,8 +260,12 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: SPACING.m,
   },
-  storyTop: {
-    paddingTop: SPACING.s,
+  staticHeader: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    paddingHorizontal: SPACING.m,
+    zIndex: 10,
   },
   storyTitleRow: {
     flexDirection: 'row',

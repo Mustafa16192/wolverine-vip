@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
     ...SHADOWS.md,
   },
   content: {
-    padding: SPACING.m,
+    padding: SPACING.l,
     flex: 1,
   },
   noPadding: {

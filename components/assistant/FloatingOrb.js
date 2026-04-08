@@ -26,7 +26,7 @@ function clamp(value, min, max) {
 export default function FloatingOrb() {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const { openAssistant, startQuickVoiceCapture, hasUnread, isThinking, isOpen } = useAssistant();
+  const { openAssistant, startQuickVoiceCapture, hasUnread, isThinking, isOpen, snapshot } = useAssistant();
 
   const tabClearance = Platform.OS === 'ios' ? 106 : 90;
   const anchorBottom = tabClearance;
@@ -93,7 +93,7 @@ export default function FloatingOrb() {
     [bounds.maxX, bounds.maxY, bounds.minX, bounds.minY, position]
   );
 
-  if (isOpen) {
+  if (isOpen || snapshot?.routeName === 'ARParkingAssist' || snapshot?.routeName === 'ARWalkToGate') {
     return null;
   }
 
@@ -135,8 +135,6 @@ export default function FloatingOrb() {
             <Mic size={15} color={COLORS.textSecondary} />
           </View>
         )}
-
-        {hasUnread ? <View style={styles.unreadDot} /> : null}
       </Pressable>
     </Animated.View>
   );

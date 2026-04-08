@@ -11,6 +11,7 @@ import {
   Animated,
   StatusBar,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { COLORS, SPACING, SHADOWS, TYPOGRAPHY, RADIUS, CHROME } from '../constants/theme';
 import {
   QrCode,
@@ -62,6 +63,7 @@ export default function TicketScreen({ navigation }) {
   }, []);
 
   const handleFlip = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setIsFlipped((previous) => {
       const toValue = previous ? 0 : 1;
       Animated.parallel([

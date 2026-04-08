@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -14,10 +14,11 @@ import {
   ParkingCircle,
   ChevronRight,
   ArrowLeft,
-  MapPin,
   Footprints,
   Clock,
   Car,
+  Camera,
+  Shield,
 } from 'lucide-react-native';
 import { useApp } from '../../context/AppContext';
 import AppBackground from '../../components/chrome/AppBackground';
@@ -29,11 +30,80 @@ import AppBackground from '../../components/chrome/AppBackground';
  */
 
 export default function ParkingPhase({ navigation }) {
-  const { advancePhase, user } = useApp();
+  const scrollRef = useRef(null);
+  const [walkSectionY, setWalkSectionY] = useState(0);
+  const {
+    advancePhase,
+    user,
+    parkingAssistSession,
+    openParkingAssist,
+    resetParkingAssist,
+    walkAssistSession,
+    openWalkAssist,
+    resetWalkAssist,
+  } = useApp();
 
   const handleContinue = () => {
     advancePhase();
     navigation.navigate('GameDayHome');
+  };
+
+  const assistStatusLabel = {
+    idle: 'Open live camera guidance',
+    staging: 'Open live camera guidance',
+    live: 'Resume live camera guidance',
+    fallback: 'Map fallback active',
+    complete: 'Parking locked in',
+  }[parkingAssistSession.status] || 'Open live camera guidance';
+
+  const assistPrimaryCta = parkingAssistSession.status === 'live'
+    ? 'RESUME CAMERA ASSIST'
+    : parkingAssistSession.status === 'complete'
+      ? 'VIEW WALK TO GATE'
+      : 'START CAMERA PARKING';
+  const continueLabel = parkingAssistSession.status === 'complete'
+    ? 'CONTINUE TO PRE-GAME'
+    : 'HEAD TO PRE-GAME';
+  const canStartWalkAssist = parkingAssistSession.status === 'complete';
+  const walkAssistStatusLabel = !canStartWalkAssist
+    ? 'Available once parking is confirmed'
+    : {
+        idle: 'Open live gate guidance',
+        live: 'Resume live gate guidance',
+        fallback: 'Route card active',
+        complete: 'Gate 4 reached',
+      }[walkAssistSession.status] || 'Open live gate guidance';
+  const walkAssistPrimaryCta = !canStartWalkAssist
+    ? 'COMPLETE PARKING FIRST'
+    : walkAssistSession.status === 'live'
+      ? 'RESUME WALK ASSIST'
+      : walkAssistSession.status === 'complete'
+        ? 'CONTINUE TO PRE-GAME'
+        : 'START WALK TO GATE';
+
+  const handleOpenParkingAssist = () => {
+    if (parkingAssistSession.status === 'complete') {
+      scrollRef.current?.scrollTo({ y: Math.max(0, walkSectionY - SPACING.l), animated: true });
+      return;
+    }
+
+    openParkingAssist();
+    navigation.navigate('ARParkingAssist');
+  };
+
+  const handleOpenWalkAssist = () => {
+    if (!canStartWalkAssist) {
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+      return;
+    }
+
+    if (walkAssistSession.status === 'complete') {
+      handleContinue();
+      return;
+    }
+
+    openWalkAssist();
+    navigation.navigate('ARWalkToGate');
   };
 
   return (
@@ -54,6 +124,7 @@ export default function ParkingPhase({ navigation }) {
         </View>
 
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
@@ -77,6 +148,63 @@ export default function ParkingPhase({ navigation }) {
                 <Text style={styles.spotLot}>{user.parking.lot}</Text>
               </View>
             </View>
+          </View>
+
+          <Text style={styles.sectionTitle}>CAMERA PARKING ASSIST</Text>
+          <View style={styles.assistCard}>
+            <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
+            <LinearGradient
+              colors={['rgba(255,203,5,0.14)', 'transparent']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.assistHeader}>
+              <View style={styles.assistIconWrap}>
+                <Camera size={28} color={COLORS.maize} />
+              </View>
+              <View style={styles.assistCopy}>
+                <Text style={styles.assistTitle}>
+                  {parkingAssistSession.status === 'complete'
+                    ? 'Parking confirmed'
+                    : `Guide me into ${user.parking.lot}`}
+                </Text>
+                <Text style={styles.assistBody}>
+                  {parkingAssistSession.status === 'complete'
+                    ? 'Your arrival is locked in. The next move is the walking route below to Gate 4.'
+                    : 'One tap opens the live camera view for the final approach into Row G and Spot G-142.'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.assistStatusRow}>
+              <View style={styles.assistStatusBadge}>
+                <Text style={styles.assistStatusBadgeText}>{assistStatusLabel}</Text>
+              </View>
+              <View style={styles.assistMeta}>
+                <Shield size={14} color={COLORS.maize} />
+                <Text style={styles.assistMetaText}>Row G • {user.parking.spot}</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.assistPrimaryButton}
+              onPress={handleOpenParkingAssist}
+              activeOpacity={0.9}
+            >
+              <Text style={styles.assistPrimaryButtonText}>{assistPrimaryCta}</Text>
+              <ChevronRight size={18} color={COLORS.blue} />
+            </TouchableOpacity>
+
+            {parkingAssistSession.status === 'complete' && (
+              <TouchableOpacity
+                style={styles.assistSecondaryButton}
+                onPress={resetParkingAssist}
+                activeOpacity={0.88}
+              >
+                <Text style={styles.assistSecondaryButtonText}>Reset parking assist</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Lot Map Placeholder */}
@@ -117,9 +245,76 @@ export default function ParkingPhase({ navigation }) {
             </View>
           </View>
 
+          <Text style={styles.sectionTitle}>CAMERA WALK ASSIST</Text>
+          <View style={styles.assistCard}>
+            <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
+            <LinearGradient
+              colors={['rgba(255,203,5,0.14)', 'transparent']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.assistHeader}>
+              <View style={styles.assistIconWrap}>
+                <Footprints size={28} color={COLORS.maize} />
+              </View>
+              <View style={styles.assistCopy}>
+                <Text style={styles.assistTitle}>
+                  {!canStartWalkAssist
+                    ? 'Walk assist unlocks after parking'
+                    : walkAssistSession.status === 'complete'
+                      ? 'Gate 4 confirmed'
+                      : 'Guide me to Gate 4'}
+                </Text>
+                <Text style={styles.assistBody}>
+                  {!canStartWalkAssist
+                    ? 'Finish the parking assist first, then the camera can take over for the walk from Gold Lot A to Gate 4.'
+                    : walkAssistSession.status === 'complete'
+                      ? 'You already reached the entry gate. The next move is pre-game access.'
+                      : 'One tap opens the live camera view for the walk from your lot exit to Gate 4.'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.assistStatusRow}>
+              <View style={styles.assistStatusBadge}>
+                <Text style={styles.assistStatusBadgeText}>{walkAssistStatusLabel}</Text>
+              </View>
+              <View style={styles.assistMeta}>
+                <Shield size={14} color={COLORS.maize} />
+                <Text style={styles.assistMetaText}>8 min • Gate 4</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.assistPrimaryButton,
+                !canStartWalkAssist && styles.assistPrimaryButtonDisabled,
+              ]}
+              onPress={handleOpenWalkAssist}
+              activeOpacity={canStartWalkAssist ? 0.9 : 0.92}
+            >
+              <Text style={styles.assistPrimaryButtonText}>{walkAssistPrimaryCta}</Text>
+              <ChevronRight size={18} color={COLORS.blue} />
+            </TouchableOpacity>
+
+            {walkAssistSession.status === 'complete' && (
+              <TouchableOpacity
+                style={styles.assistSecondaryButton}
+                onPress={resetWalkAssist}
+                activeOpacity={0.88}
+              >
+                <Text style={styles.assistSecondaryButtonText}>Reset walk assist</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
           {/* Walking Directions */}
           <Text style={styles.sectionTitle}>TO STADIUM</Text>
-          <View style={styles.walkCard}>
+          <View
+            style={styles.walkCard}
+            onLayout={(event) => setWalkSectionY(event.nativeEvent.layout.y)}
+          >
             <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
             <View style={styles.walkContent}>
               <View style={styles.walkMain}>
@@ -163,7 +358,7 @@ export default function ParkingPhase({ navigation }) {
             onPress={handleContinue}
             activeOpacity={0.9}
           >
-            <Text style={styles.continueButtonText}>HEAD TO PRE-GAME</Text>
+            <Text style={styles.continueButtonText}>{continueLabel}</Text>
             <ChevronRight size={20} color={COLORS.blue} />
           </TouchableOpacity>
 
@@ -262,6 +457,102 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.fontSize.base,
     fontFamily: 'AtkinsonHyperlegible_400Regular',
     marginTop: SPACING.xxs,
+  },
+
+  assistCard: {
+    borderRadius: RADIUS.xl,
+    overflow: 'hidden',
+    marginBottom: SPACING.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255,203,5,0.2)',
+    padding: SPACING.l,
+  },
+  assistHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: SPACING.m,
+    marginBottom: SPACING.m,
+  },
+  assistIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,203,5,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  assistCopy: {
+    flex: 1,
+  },
+  assistTitle: {
+    color: COLORS.text,
+    fontSize: TYPOGRAPHY.fontSize.lg,
+    fontFamily: 'Montserrat_700Bold',
+    marginBottom: SPACING.xs,
+  },
+  assistBody: {
+    color: COLORS.textSecondary,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    lineHeight: 20,
+    fontFamily: 'AtkinsonHyperlegible_400Regular',
+  },
+  assistStatusRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.m,
+    gap: SPACING.s,
+  },
+  assistStatusBadge: {
+    flex: 1,
+    borderRadius: RADIUS.full,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  assistStatusBadgeText: {
+    color: COLORS.maize,
+    fontSize: TYPOGRAPHY.fontSize.xs,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 0.8,
+  },
+  assistMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  assistMetaText: {
+    color: COLORS.text,
+    fontSize: TYPOGRAPHY.fontSize.xs,
+    fontFamily: 'Montserrat_600SemiBold',
+  },
+  assistPrimaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.s,
+    backgroundColor: COLORS.maize,
+    borderRadius: RADIUS.full,
+    paddingVertical: SPACING.m,
+  },
+  assistPrimaryButtonDisabled: {
+    opacity: 0.56,
+  },
+  assistPrimaryButtonText: {
+    color: COLORS.blue,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 1,
+  },
+  assistSecondaryButton: {
+    marginTop: SPACING.s,
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  assistSecondaryButtonText: {
+    color: COLORS.textSecondary,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    fontFamily: 'Montserrat_600SemiBold',
   },
 
   // Map Card

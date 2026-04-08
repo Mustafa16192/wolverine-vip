@@ -3,13 +3,15 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   Dimensions,
   Image,
   Platform,
+  Modal,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS } from '../../constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -31,13 +33,13 @@ import {
   Car,
   MapPin,
   Footprints,
+  Eye,
   AlertTriangle,
   Route,
-  SkipForward,
   Zap,
   Shield,
-  Eye,
-  EyeOff,
+  Camera,
+  Ticket,
 } from 'lucide-react-native';
 import { useApp } from '../../context/AppContext';
 import AppBackground from '../../components/chrome/AppBackground';
@@ -58,37 +60,44 @@ const JOURNEY_PHASES = [
 /**
  * GameDayHomeScreen - Redesigned
  *
- * The current phase card dominates 75%+ of the screen.
+ * The current phase card dominates the screen.
  * Context-aware content changes based on phase.
- * Compact phase dots at top, advance CTA at bottom.
+ * The chrome stays restrained so the current moment stays obvious.
  */
 export default function GameDayHomeScreen({ navigation }) {
-  const { gameDayPhase, advancePhase, goToPhase, currentGame, user, exitGameDay } = useApp();
-  const [skippedPhases, setSkippedPhases] = useState({});
+  const {
+    gameDayPhase,
+    goToPhase,
+    currentGame,
+    user,
+    exitGameDay,
+    parkingAssistSession,
+    walkAssistSession,
+  } = useApp();
+  const [showTicketReadySheet, setShowTicketReadySheet] = useState(false);
 
   const currentPhaseIndex = JOURNEY_PHASES.findIndex(p => p.id === gameDayPhase);
   const currentPhaseData = JOURNEY_PHASES[currentPhaseIndex];
+  const nextPhaseData = currentPhaseIndex < JOURNEY_PHASES.length - 1
+    ? JOURNEY_PHASES[currentPhaseIndex + 1]
+    : null;
 
-  const toggleSkipPhase = (phaseId) => {
-    setSkippedPhases(prev => ({ ...prev, [phaseId]: !prev[phaseId] }));
-  };
-
-  const getPhaseStatus = (index) => {
-    if (index < currentPhaseIndex) return 'completed';
-    if (index === currentPhaseIndex) return 'current';
-    if (skippedPhases[JOURNEY_PHASES[index].id]) return 'skipped';
-    return 'upcoming';
-  };
-
-  const handleAdvance = () => {
-    // Skip over any skipped phases
-    let nextIndex = currentPhaseIndex + 1;
-    while (nextIndex < JOURNEY_PHASES.length && skippedPhases[JOURNEY_PHASES[nextIndex].id]) {
-      nextIndex++;
-    }
+  const advanceToNextAvailablePhase = () => {
+    const nextIndex = currentPhaseIndex + 1;
     if (nextIndex < JOURNEY_PHASES.length) {
       goToPhase(JOURNEY_PHASES[nextIndex].id);
     }
+  };
+
+  const handleAdvance = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    if (gameDayPhase === 'parking' && parkingAssistSession.status === 'complete') {
+      setShowTicketReadySheet(true);
+      return;
+    }
+
+    advanceToNextAvailablePhase();
   };
 
   const handlePhaseDetailPress = () => {
@@ -107,13 +116,72 @@ export default function GameDayHomeScreen({ navigation }) {
 
   // Get next phase label for CTA button
   const getNextPhaseLabel = () => {
-    let nextIndex = currentPhaseIndex + 1;
-    while (nextIndex < JOURNEY_PHASES.length && skippedPhases[JOURNEY_PHASES[nextIndex].id]) {
-      nextIndex++;
+    if (gameDayPhase === 'parking' && parkingAssistSession.status === 'complete') {
+      return 'ENTRY PASS';
     }
-    if (nextIndex >= JOURNEY_PHASES.length) return 'FINISH';
-    return JOURNEY_PHASES[nextIndex].label;
+
+    if (!nextPhaseData) return 'FINISH';
+    return nextPhaseData.label;
   };
+
+  const getPhaseNarrative = () => {
+    switch (gameDayPhase) {
+      case 'morning':
+        return 'Set timing, weather, and the first departure decision before the day compresses.';
+      case 'tailgate':
+        return 'Keep the crew coordinated without losing the path back to kickoff logistics.';
+      case 'travel':
+        return 'Arrival matters more than browsing. Route clarity should stay front and center.';
+      case 'parking':
+        if (parkingAssistSession.status === 'complete') {
+          return 'Parking is locked in. Bring the pass forward now so entry feels calm instead of rushed.';
+        }
+        return 'Finish the lot arrival first. The journey should not move ahead until the car is settled.';
+      case 'pregame':
+        return walkAssistSession.status === 'complete'
+          ? 'You are at the gate. Entry, access, and seat timing should stay direct from here.'
+          : 'Keep the approach to entry simple. Relevant access details should come forward at the right moment.';
+      case 'ingame':
+        return 'The app becomes lighter here. Support stays available without competing with the game.';
+      case 'postgame':
+        return 'Shift from the final whistle to a clean exit plan without burying the next move.';
+      case 'home':
+        return 'Close the loop, reset the mode, and leave the experience feeling finished.';
+      default:
+        return 'Stay focused on the one thing that matters right now.';
+    }
+  };
+
+  const getPrimaryActionConfig = () => {
+    if (gameDayPhase === 'parking') {
+      if (parkingAssistSession.status !== 'complete') {
+        return {
+          label: 'OPEN PARKING ASSIST',
+          onPress: handlePhaseDetailPress,
+        };
+      }
+
+      return {
+        label: 'PREPARE ENTRY PASS',
+        onPress: handleAdvance,
+      };
+    }
+
+    if (gameDayPhase === 'home') {
+      return {
+        label: 'END GAME DAY',
+        onPress: handleBackToDashboard,
+      };
+    }
+
+    return {
+      label: `NEXT: ${getNextPhaseLabel()}`,
+      onPress: handleAdvance,
+    };
+  };
+
+  const phaseNarrative = getPhaseNarrative();
+  const primaryAction = getPrimaryActionConfig();
 
   return (
     <View style={styles.container}>
@@ -138,50 +206,39 @@ export default function GameDayHomeScreen({ navigation }) {
               vs {currentGame?.opponent || 'Ohio State'}
             </Text>
           </View>
-          <TouchableOpacity
-            style={styles.detailButton}
-            onPress={handlePhaseDetailPress}
-          >
-            <Text style={styles.detailButtonText}>Details</Text>
-            <ChevronRight size={14} color={COLORS.maize} />
-          </TouchableOpacity>
+          <View style={styles.headerSpacer} />
         </View>
 
-        {/* Phase Progress Dots */}
-        <View style={styles.phaseDots}>
-          {JOURNEY_PHASES.map((phase, index) => {
-            const status = getPhaseStatus(index);
-            return (
-              <TouchableOpacity
-                key={phase.id}
-                style={styles.phaseDotsItem}
-                onPress={() => {
-                  if (status === 'completed' || status === 'current') {
-                    goToPhase(phase.id);
-                  }
-                }}
-              >
-                <View
-                  style={[
-                    styles.phaseDot,
-                    status === 'completed' && styles.phaseDotCompleted,
-                    status === 'current' && styles.phaseDotCurrent,
-                    status === 'skipped' && styles.phaseDotSkipped,
-                  ]}
-                />
-                <Text
-                  style={[
-                    styles.phaseDotLabel,
-                    status === 'current' && styles.phaseDotLabelCurrent,
-                    status === 'skipped' && styles.phaseDotLabelSkipped,
-                  ]}
-                  numberOfLines={1}
-                >
-                  {phase.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+        <View style={styles.journeyStatusCard}>
+          <View style={styles.journeyStatusTopRow}>
+            <Text style={styles.journeyStatusEyebrow}>Journey Status</Text>
+            <Text style={styles.journeyStatusProgress}>
+              {currentPhaseIndex + 1} of {JOURNEY_PHASES.length}
+            </Text>
+          </View>
+          <View style={styles.journeyStatusMainRow}>
+            <View style={styles.journeyStatusBlock}>
+              <Text style={styles.journeyStatusLabel}>Now</Text>
+              <Text style={styles.journeyStatusValue}>{currentPhaseData.label}</Text>
+            </View>
+            <View style={styles.journeyStatusDivider} />
+            <View style={styles.journeyStatusBlock}>
+              <Text style={styles.journeyStatusLabel}>Up Next</Text>
+              <Text style={styles.journeyStatusValue}>
+                {gameDayPhase === 'parking' && parkingAssistSession.status === 'complete'
+                  ? 'ENTRY PASS'
+                  : (nextPhaseData?.label || 'WRAP')}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.journeyProgressTrack}>
+            <View
+              style={[
+                styles.journeyProgressFill,
+                { width: `${((currentPhaseIndex + 1) / JOURNEY_PHASES.length) * 100}%` },
+              ]}
+            />
+          </View>
         </View>
 
         {/* Main Phase Card - Dominates the screen */}
@@ -209,34 +266,23 @@ export default function GameDayHomeScreen({ navigation }) {
                 })}
               </View>
               <View style={styles.phaseCardHeaderText}>
-                <Text style={styles.phaseCardLabel}>CURRENT PHASE</Text>
                 <Text style={styles.phaseCardTitle}>{currentPhaseData.label}</Text>
+                <Text style={styles.phaseCardSubtitle}>{phaseNarrative}</Text>
               </View>
-              <Text style={styles.phaseProgress}>
-                {currentPhaseIndex + 1}/{JOURNEY_PHASES.length}
-              </Text>
             </View>
 
             {/* Context-Aware Content */}
             <View style={styles.phaseCardBody}>
-              {renderPhaseContent(gameDayPhase, user, currentGame)}
+              {renderPhaseContent(gameDayPhase, user, currentGame, navigation)}
             </View>
           </View>
-
-          {/* Skippable Phase Toggles */}
-          {renderSkipControls(
-            JOURNEY_PHASES,
-            currentPhaseIndex,
-            skippedPhases,
-            toggleSkipPhase
-          )}
         </ScrollView>
 
         {/* Bottom CTA */}
         <View style={styles.bottomCTA}>
           <TouchableOpacity
             style={styles.advanceButton}
-            onPress={handleAdvance}
+            onPress={primaryAction.onPress}
             activeOpacity={0.9}
           >
             <LinearGradient
@@ -246,13 +292,103 @@ export default function GameDayHomeScreen({ navigation }) {
               style={StyleSheet.absoluteFill}
               borderRadius={RADIUS.lg}
             />
-            <Text style={styles.advanceButtonText}>
-              NEXT: {getNextPhaseLabel()}
-            </Text>
+            <Text style={styles.advanceButtonText}>{primaryAction.label}</Text>
             <ChevronRight size={20} color={COLORS.blue} />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
+
+      <Modal
+        visible={showTicketReadySheet}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowTicketReadySheet(false)}
+      >
+        <View style={styles.ticketSheetOverlay}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setShowTicketReadySheet(false)}
+          />
+          <View style={styles.ticketSheet}>
+            <BlurView intensity={28} tint="dark" style={StyleSheet.absoluteFill} />
+            <LinearGradient
+              colors={['rgba(255,203,5,0.14)', 'rgba(255,203,5,0.02)', 'rgba(0,0,0,0)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+
+            <View style={styles.ticketSheetHandle} />
+
+            <View style={styles.ticketSheetHeader}>
+              <View style={styles.ticketSheetBadge}>
+                <Ticket size={14} color={COLORS.blue} />
+                <Text style={styles.ticketSheetBadgeText}>ENTRY MOMENT</Text>
+              </View>
+              <Text style={styles.ticketSheetTitle}>Your ticket is ready.</Text>
+              <Text style={styles.ticketSheetBody}>
+                Parking is confirmed. Open your pass now so the walk to Gate 4 feels seamless instead of rushed.
+              </Text>
+            </View>
+
+            <View style={styles.ticketSheetMetaRow}>
+              <View style={styles.ticketMetaChip}>
+                <Shield size={12} color={COLORS.maize} />
+                <Text style={styles.ticketMetaChipText}>Gate 4</Text>
+              </View>
+              <View style={styles.ticketMetaChip}>
+                <MapPin size={12} color={COLORS.maize} />
+                <Text style={styles.ticketMetaChipText}>Sec {user.seat.section}</Text>
+              </View>
+              <View style={styles.ticketMetaChip}>
+                <Clock size={12} color={COLORS.maize} />
+                <Text style={styles.ticketMetaChipText}>{currentGame?.time || '12:00 PM'}</Text>
+              </View>
+            </View>
+
+            <View style={styles.ticketSeatCard}>
+              <Text style={styles.ticketSeatLabel}>Seat Command</Text>
+              <Text style={styles.ticketSeatValue}>
+                Section {user.seat.section} • Row {user.seat.row} • Seat {user.seat.seat}
+              </Text>
+              <Text style={styles.ticketSeatHint}>
+                Keep this ready before you move into the entry lane.
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.ticketSheetPrimaryButton}
+              activeOpacity={0.9}
+              onPress={() => {
+                setShowTicketReadySheet(false);
+                navigation.navigate('Ticket');
+              }}
+            >
+              <LinearGradient
+                colors={[COLORS.maize, '#E5B800']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={StyleSheet.absoluteFill}
+                borderRadius={RADIUS.lg}
+              />
+              <Text style={styles.ticketSheetPrimaryText}>Open Ticket</Text>
+              <ChevronRight size={18} color={COLORS.blue} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.ticketSheetSecondaryButton}
+              activeOpacity={0.88}
+              onPress={() => {
+                setShowTicketReadySheet(false);
+                advanceToNextAvailablePhase();
+              }}
+            >
+              <Text style={styles.ticketSheetSecondaryText}>Continue to Pre-Game</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -262,7 +398,7 @@ export default function GameDayHomeScreen({ navigation }) {
  * This is the meat of the experience - each phase shows
  * completely different, relevant information.
  */
-function renderPhaseContent(phase, user, currentGame) {
+function renderPhaseContent(phase, user, currentGame, navigation) {
   switch (phase) {
     case 'morning':
       return <MorningContent user={user} currentGame={currentGame} />;
@@ -271,7 +407,7 @@ function renderPhaseContent(phase, user, currentGame) {
     case 'travel':
       return <TravelContent user={user} />;
     case 'parking':
-      return <ParkingContent user={user} />;
+      return <ParkingContent user={user} navigation={navigation} />;
     case 'pregame':
       return <PregameContent user={user} currentGame={currentGame} />;
     case 'ingame':
@@ -542,7 +678,24 @@ const LOT_OCCUPANCY = [
   [1,0,1,1,1,1,0,1,1,1], // G — user is index 1 (overridden)
 ];
 
-function ParkingContent({ user }) {
+function ParkingContent({ user, navigation }) {
+  const {
+    parkingAssistSession,
+    openParkingAssist,
+    walkAssistSession,
+    openWalkAssist,
+  } = useApp();
+
+  const handleOpenParkingAssist = () => {
+    openParkingAssist();
+    navigation.navigate('ARParkingAssist');
+  };
+
+  const handleOpenWalkAssist = () => {
+    openWalkAssist();
+    navigation.navigate('ARWalkToGate');
+  };
+
   const LOT_ROWS = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
   const SPOTS_PER_ROW = 10;
   const userRow = 'G';
@@ -559,6 +712,73 @@ function ParkingContent({ user }) {
           <Text style={phaseStyles.spotHeroLabel}>YOUR SPOT</Text>
           <Text style={phaseStyles.spotHeroNumber}>{user.parking.spot}</Text>
           <Text style={phaseStyles.spotHeroLot}>{user.parking.lot}</Text>
+        </View>
+      </View>
+
+      <View style={phaseStyles.divider} />
+
+      {/* AR Assistant Actions */}
+      <View style={phaseStyles.infoBlock}>
+        <View style={phaseStyles.infoBlockHeader}>
+          <Camera size={18} color={COLORS.textSecondary} />
+          <Text style={phaseStyles.infoBlockTitle}>LIVE CAMERA ASSISTANCE</Text>
+        </View>
+        <View style={{ gap: SPACING.s }}>
+          <TouchableOpacity
+            style={{
+              backgroundColor: 'rgba(255,255,255,0.05)',
+              borderRadius: RADIUS.lg,
+              padding: SPACING.m,
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.1)'
+            }}
+            onPress={handleOpenParkingAssist}
+            activeOpacity={0.9}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.s }}>
+              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,203,5,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                <ParkingCircle size={16} color={COLORS.maize} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: COLORS.text, fontSize: TYPOGRAPHY.fontSize.sm, fontFamily: 'Montserrat_600SemiBold' }}>
+                  {parkingAssistSession.status === 'complete' ? 'Parking Confirmed' : 'Find Your Spot'}
+                </Text>
+                <Text style={{ color: COLORS.textSecondary, fontSize: 11, fontFamily: 'AtkinsonHyperlegible_400Regular' }}>
+                  {parkingAssistSession.status === 'complete' ? 'Vehicle located' : 'Live AR guidance to your spot'}
+                </Text>
+              </View>
+              <ChevronRight size={18} color={COLORS.textSecondary} />
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[{
+              backgroundColor: 'rgba(255,255,255,0.05)',
+              borderRadius: RADIUS.lg,
+              padding: SPACING.m,
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.1)'
+            }, parkingAssistSession.status !== 'complete' && { opacity: 0.5 }]}
+            onPress={parkingAssistSession.status === 'complete' ? handleOpenWalkAssist : null}
+            activeOpacity={0.9}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.s }}>
+              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,203,5,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                <Footprints size={16} color={COLORS.maize} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: COLORS.text, fontSize: TYPOGRAPHY.fontSize.sm, fontFamily: 'Montserrat_600SemiBold' }}>
+                  {walkAssistSession.status === 'complete' ? 'Gate Reached' : 'Walk to Gate'}
+                </Text>
+                <Text style={{ color: COLORS.textSecondary, fontSize: 11, fontFamily: 'AtkinsonHyperlegible_400Regular' }}>
+                  {parkingAssistSession.status !== 'complete' 
+                    ? 'Unlocks after parking' 
+                    : walkAssistSession.status === 'complete' ? 'Arrived at Gate 4' : 'Live AR route to stadium gate'}
+                </Text>
+              </View>
+              <ChevronRight size={18} color={COLORS.textSecondary} />
+            </View>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -932,58 +1152,6 @@ function HomeContent({ user }) {
 }
 
 /* ========================================
-   SKIP CONTROLS
-   ======================================== */
-
-function renderSkipControls(phases, currentIndex, skippedPhases, toggleSkip) {
-  const upcomingSkippable = phases
-    .filter((p, i) => i > currentIndex && p.skippable);
-
-  if (upcomingSkippable.length === 0) return null;
-
-  return (
-    <View style={styles.skipSection}>
-      <Text style={styles.skipSectionTitle}>CUSTOMIZE JOURNEY</Text>
-      {upcomingSkippable.map((phase) => {
-        const isSkipped = skippedPhases[phase.id];
-        return (
-          <TouchableOpacity
-            key={phase.id}
-            style={[styles.skipRow, isSkipped && styles.skipRowActive]}
-            onPress={() => toggleSkip(phase.id)}
-          >
-            <View style={styles.skipRowLeft}>
-              {React.createElement(phase.icon, {
-                size: 18,
-                color: isSkipped ? COLORS.textTertiary : COLORS.text,
-              })}
-              <Text
-                style={[styles.skipRowLabel, isSkipped && styles.skipRowLabelSkipped]}
-              >
-                {phase.label}
-              </Text>
-            </View>
-            <View style={styles.skipToggle}>
-              {isSkipped ? (
-                <>
-                  <EyeOff size={14} color={COLORS.textTertiary} />
-                  <Text style={styles.skipToggleText}>Skipped</Text>
-                </>
-              ) : (
-                <>
-                  <Eye size={14} color={COLORS.waveFieldGreen} />
-                  <Text style={[styles.skipToggleText, { color: COLORS.waveFieldGreen }]}>Active</Text>
-                </>
-              )}
-            </View>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-}
-
-/* ========================================
    STYLES - Main Layout
    ======================================== */
 
@@ -1015,6 +1183,9 @@ const styles = StyleSheet.create({
   headerLeft: {
     flex: 1,
   },
+  headerSpacer: {
+    width: 44,
+  },
   gameDayBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1037,66 +1208,66 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.fontSize.lg,
     fontFamily: 'Montserrat_700Bold',
   },
-  detailButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    paddingHorizontal: SPACING.m,
-    paddingVertical: SPACING.s,
-    borderRadius: RADIUS.full,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  detailButtonText: {
-    color: COLORS.maize,
-    fontSize: TYPOGRAPHY.fontSize.sm,
-    fontFamily: 'Montserrat_600SemiBold',
-  },
 
-  // Phase Dots
-  phaseDots: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  journeyStatusCard: {
     paddingHorizontal: SPACING.l,
     paddingVertical: SPACING.s,
     marginBottom: SPACING.xs,
   },
-  phaseDotsItem: {
+  journeyStatusTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: SPACING.xs,
+  },
+  journeyStatusEyebrow: {
+    color: COLORS.textTertiary,
+    fontSize: TYPOGRAPHY.fontSize.xs,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 1.2,
+  },
+  journeyStatusProgress: {
+    color: COLORS.textSecondary,
+    fontSize: TYPOGRAPHY.fontSize.xs,
+    fontFamily: 'Montserrat_600SemiBold',
+  },
+  journeyStatusMainRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.m,
+    marginBottom: SPACING.s,
+  },
+  journeyStatusBlock: {
     flex: 1,
   },
-  phaseDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+  journeyStatusLabel: {
+    color: COLORS.textTertiary,
+    fontSize: 10,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 1,
     marginBottom: 4,
   },
-  phaseDotCompleted: {
-    backgroundColor: COLORS.maize,
-  },
-  phaseDotCurrent: {
-    backgroundColor: COLORS.maize,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: 'rgba(255,203,5,0.4)',
-  },
-  phaseDotSkipped: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-  },
-  phaseDotLabel: {
-    color: COLORS.textTertiary,
-    fontSize: 7,
+  journeyStatusValue: {
+    color: COLORS.text,
+    fontSize: TYPOGRAPHY.fontSize.sm,
     fontFamily: 'Montserrat_700Bold',
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
-  phaseDotLabelCurrent: {
-    color: COLORS.maize,
+  journeyStatusDivider: {
+    width: 1,
+    alignSelf: 'stretch',
+    backgroundColor: 'rgba(255,255,255,0.12)',
   },
-  phaseDotLabelSkipped: {
-    color: 'rgba(255,255,255,0.2)',
-    textDecorationLine: 'line-through',
+  journeyProgressTrack: {
+    height: 4,
+    borderRadius: RADIUS.full,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    overflow: 'hidden',
+  },
+  journeyProgressFill: {
+    height: '100%',
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.maize,
   },
 
   // Main Content
@@ -1114,7 +1285,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255,203,5,0.25)',
-    minHeight: height * 0.6,
+    minHeight: height * 0.54,
   },
   phaseCardAccent: {
     height: 4,
@@ -1123,8 +1294,8 @@ const styles = StyleSheet.create({
   phaseCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.l,
-    paddingBottom: SPACING.m,
+    padding: SPACING.m,
+    paddingBottom: SPACING.s,
     gap: SPACING.m,
   },
   phaseIconContainer: {
@@ -1138,77 +1309,21 @@ const styles = StyleSheet.create({
   phaseCardHeaderText: {
     flex: 1,
   },
-  phaseCardLabel: {
-    color: COLORS.maize,
-    fontSize: TYPOGRAPHY.fontSize.xs,
-    fontFamily: 'Montserrat_700Bold',
-    letterSpacing: 1,
-  },
   phaseCardTitle: {
     color: COLORS.text,
-    fontSize: TYPOGRAPHY.fontSize.xxl,
+    fontSize: TYPOGRAPHY.fontSize.xl,
     fontFamily: 'Montserrat_700Bold',
+    marginBottom: 6,
   },
-  phaseProgress: {
-    color: COLORS.textTertiary,
+  phaseCardSubtitle: {
+    color: COLORS.textSecondary,
     fontSize: TYPOGRAPHY.fontSize.sm,
-    fontFamily: 'Montserrat_600SemiBold',
+    lineHeight: 20,
+    fontFamily: 'AtkinsonHyperlegible_400Regular',
   },
   phaseCardBody: {
-    paddingHorizontal: SPACING.l,
-    paddingBottom: SPACING.l,
-  },
-
-  // Skip Section
-  skipSection: {
-    marginTop: SPACING.l,
-  },
-  skipSectionTitle: {
-    color: COLORS.textTertiary,
-    fontSize: TYPOGRAPHY.fontSize.xs,
-    fontFamily: 'Montserrat_700Bold',
-    letterSpacing: 2,
-    marginBottom: SPACING.m,
-  },
-  skipRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: SPACING.m,
     paddingHorizontal: SPACING.m,
-    borderRadius: RADIUS.lg,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    marginBottom: SPACING.s,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  skipRowActive: {
-    borderColor: 'rgba(255,255,255,0.05)',
-    backgroundColor: 'rgba(255,255,255,0.02)',
-  },
-  skipRowLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.m,
-  },
-  skipRowLabel: {
-    color: COLORS.text,
-    fontSize: TYPOGRAPHY.fontSize.sm,
-    fontFamily: 'Montserrat_600SemiBold',
-  },
-  skipRowLabelSkipped: {
-    color: COLORS.textTertiary,
-    textDecorationLine: 'line-through',
-  },
-  skipToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.xs,
-  },
-  skipToggleText: {
-    color: COLORS.textTertiary,
-    fontSize: TYPOGRAPHY.fontSize.xs,
-    fontFamily: 'Montserrat_600SemiBold',
+    paddingBottom: SPACING.m,
   },
 
   // Bottom CTA
@@ -1235,6 +1350,144 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.fontSize.sm,
     fontFamily: 'Montserrat_700Bold',
     letterSpacing: 1,
+  },
+  ticketSheetOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.42)',
+  },
+  ticketSheet: {
+    overflow: 'hidden',
+    borderTopLeftRadius: RADIUS.xl,
+    borderTopRightRadius: RADIUS.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(5,16,31,0.96)',
+    paddingHorizontal: SPACING.l,
+    paddingTop: SPACING.s,
+    paddingBottom: Platform.OS === 'ios' ? 36 : SPACING.l,
+  },
+  ticketSheetHandle: {
+    width: 52,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignSelf: 'center',
+    marginBottom: SPACING.m,
+  },
+  ticketSheetHeader: {
+    marginBottom: SPACING.m,
+  },
+  ticketSheetBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    backgroundColor: COLORS.maize,
+    borderRadius: RADIUS.full,
+    paddingHorizontal: SPACING.s,
+    paddingVertical: 6,
+    marginBottom: SPACING.s,
+  },
+  ticketSheetBadgeText: {
+    color: COLORS.blue,
+    fontSize: TYPOGRAPHY.fontSize.xs,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 0.9,
+  },
+  ticketSheetTitle: {
+    color: COLORS.text,
+    fontSize: TYPOGRAPHY.fontSize.xl,
+    lineHeight: 30,
+    fontFamily: 'Montserrat_700Bold',
+    marginBottom: SPACING.xs,
+  },
+  ticketSheetBody: {
+    color: COLORS.textSecondary,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    lineHeight: 20,
+    fontFamily: 'AtkinsonHyperlegible_400Regular',
+  },
+  ticketSheetMetaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.xs,
+    marginBottom: SPACING.m,
+  },
+  ticketMetaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: RADIUS.full,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  ticketMetaChipText: {
+    color: COLORS.text,
+    fontSize: TYPOGRAPHY.fontSize.xs,
+    fontFamily: 'Montserrat_600SemiBold',
+  },
+  ticketSeatCard: {
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    padding: SPACING.m,
+    marginBottom: SPACING.m,
+  },
+  ticketSeatLabel: {
+    color: COLORS.textTertiary,
+    fontSize: TYPOGRAPHY.fontSize.xs,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 1,
+    marginBottom: 6,
+  },
+  ticketSeatValue: {
+    color: COLORS.text,
+    fontSize: TYPOGRAPHY.fontSize.base,
+    lineHeight: 22,
+    fontFamily: 'Montserrat_700Bold',
+    marginBottom: 6,
+  },
+  ticketSeatHint: {
+    color: COLORS.textSecondary,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    lineHeight: 18,
+    fontFamily: 'AtkinsonHyperlegible_400Regular',
+  },
+  ticketSheetPrimaryButton: {
+    minHeight: 56,
+    borderRadius: RADIUS.lg,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: SPACING.s,
+  },
+  ticketSheetPrimaryText: {
+    color: COLORS.blue,
+    fontSize: TYPOGRAPHY.fontSize.base,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 0.6,
+  },
+  ticketSheetSecondaryButton: {
+    minHeight: 48,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  ticketSheetSecondaryText: {
+    color: COLORS.textSecondary,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    fontFamily: 'Montserrat_600SemiBold',
+    letterSpacing: 0.4,
   },
 });
 

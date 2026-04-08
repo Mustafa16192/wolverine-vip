@@ -42,9 +42,7 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: CHROME.surface.elevated,
-    borderWidth: 1,
-    borderColor: CHROME.surface.borderSoft,
+    backgroundColor: 'transparent',
   },
   buttonDisabled: {
     opacity: 0.5,

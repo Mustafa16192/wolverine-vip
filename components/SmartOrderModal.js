@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { COLORS, SPACING, SHADOWS } from '../constants/theme';
 import { BlurView } from 'expo-blur';
 import { X, Plus } from 'lucide-react-native';
@@ -26,6 +27,7 @@ export default function SmartOrderModal({ visible, onClose, onOrderPlaced }) {
   const [cart, setCart] = useState({});
 
   const addToCart = (item) => {
+    Haptics.selectionAsync();
     setCart((prev) => ({
       ...prev,
       [item.id]: (prev[item.id] || 0) + 1,
@@ -42,6 +44,7 @@ export default function SmartOrderModal({ visible, onClose, onOrderPlaced }) {
   const handlePlaceOrder = () => {
     const total = calculateTotal();
     if (total > 0) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setCart({});
       if (onOrderPlaced) {
         onOrderPlaced(total);
@@ -53,6 +56,7 @@ export default function SmartOrderModal({ visible, onClose, onOrderPlaced }) {
   };
 
   const quickReorder = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const newCart = {};
     FAVORITES.forEach((fav) => {
       newCart[fav.id] = fav.quantity;

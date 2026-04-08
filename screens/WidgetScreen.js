@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, StatusBar, TouchableOpacity, Switch } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, StatusBar, TouchableOpacity, Switch } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING } from '../constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Smartphone, Lock, TrendingUp, Trophy, Calendar, Users } from 'lucide-react-native';

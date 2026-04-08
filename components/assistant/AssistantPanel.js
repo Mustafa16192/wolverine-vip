@@ -74,6 +74,7 @@ export default function AssistantPanel() {
   const [inputText, setInputText] = useState('');
 
   const openProgress = useRef(new Animated.Value(0)).current;
+  const immersiveMode = snapshot?.routeName === 'ARParkingAssist' || snapshot?.routeName === 'ARWalkToGate';
 
   useEffect(() => {
     Animated.spring(openProgress, {
@@ -132,6 +133,10 @@ export default function AssistantPanel() {
     await sendInput({ mode: 'image', text: prompt });
   };
 
+  if (immersiveMode) {
+    return null;
+  }
+
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents={isOpen ? 'auto' : 'none'}>
       <Animated.View style={[styles.overlay, { opacity: overlayOpacity }]}>
@@ -166,23 +171,7 @@ export default function AssistantPanel() {
 
         <Text style={styles.routeHint}>Synced to {snapshot?.routeName || 'App'} context</Text>
 
-        <View style={styles.utilityRow}>
-          <TouchableOpacity
-            style={[styles.utilityChip, proactiveEnabled && styles.utilityChipActive]}
-            onPress={() => setProactiveEnabled(!proactiveEnabled)}
-            activeOpacity={0.85}
-          >
-            <BellRing size={12} color={proactiveEnabled ? COLORS.blue : COLORS.textSecondary} />
-            <Text style={[styles.utilityChipText, proactiveEnabled && styles.utilityChipTextActive]}>
-              Proactive {proactiveEnabled ? 'On' : 'Off'}
-            </Text>
-          </TouchableOpacity>
 
-          <TouchableOpacity style={styles.utilityChip} onPress={clearHistory} activeOpacity={0.85}>
-            <Trash2 size={12} color={COLORS.textSecondary} />
-            <Text style={styles.utilityChipText}>Clear History</Text>
-          </TouchableOpacity>
-        </View>
 
         {lastError ? <Text style={styles.errorText}>{lastError}</Text> : null}
 
@@ -225,7 +214,7 @@ export default function AssistantPanel() {
                         onPress={() => executeAction(action)}
                       >
                         <Text style={styles.actionChipText}>{actionLabel(action.type)}</Text>
-                        <ChevronRight size={14} color={COLORS.blue} />
+                        <ChevronRight size={16} color={COLORS.maize} />
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -243,7 +232,7 @@ export default function AssistantPanel() {
             <TextInput
               value={inputText}
               onChangeText={setInputText}
-              placeholder="Tell me what to do next..."
+              placeholder="Ask Copilot..."
               placeholderTextColor={COLORS.textSecondary}
               style={styles.input}
               multiline
@@ -314,9 +303,10 @@ const styles = StyleSheet.create({
     backgroundColor: CHROME.surface.elevated,
   },
   routeHint: {
-    color: COLORS.textSecondary,
+    color: 'rgba(255, 255, 255, 0.65)',
     fontSize: TYPOGRAPHY.fontSize.xs,
     fontFamily: 'AtkinsonHyperlegible_400Regular',
+    marginBottom: SPACING.s,
   },
   utilityRow: {
     flexDirection: 'row',
@@ -386,7 +376,7 @@ const styles = StyleSheet.create({
   },
   bubble: {
     maxWidth: '90%',
-    borderRadius: RADIUS.md,
+    borderRadius: RADIUS.lg,
     borderWidth: 1,
     paddingHorizontal: 10,
     paddingVertical: 8,
@@ -397,8 +387,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,203,5,0.18)',
   },
   assistantBubble: {
-    borderColor: CHROME.surface.borderSoft,
+    borderColor: 'rgba(255,255,255,0.15)',
     backgroundColor: CHROME.surface.base,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderTopLeftRadius: 4,
   },
   userText: {
     color: COLORS.text,
@@ -423,32 +416,36 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     borderRadius: RADIUS.full,
     borderWidth: 1,
-    borderColor: 'rgba(255,203,5,0.42)',
-    backgroundColor: 'rgba(255,203,5,0.12)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderColor: 'rgba(255,203,5,0.3)',
+    backgroundColor: 'rgba(255, 203, 5, 0.08)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   actionChipText: {
-    color: COLORS.text,
-    fontSize: TYPOGRAPHY.fontSize.xs,
+    color: COLORS.maize,
+    fontSize: TYPOGRAPHY.fontSize.sm,
     fontFamily: 'Montserrat_700Bold',
-    letterSpacing: 0.3,
+    letterSpacing: 0.4,
   },
   inputShell: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     gap: SPACING.xs,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: RADIUS.xl,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: CHROME.surface.borderSoft,
   },
   inputWrap: {
     flex: 1,
-    minHeight: 40,
+    minHeight: 38,
     maxHeight: 86,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: CHROME.surface.borderSoft,
-    backgroundColor: CHROME.surface.base,
-    paddingHorizontal: 10,
-    paddingVertical: Platform.OS === 'ios' ? 9 : 5,
+    backgroundColor: 'transparent',
+    paddingHorizontal: 6,
+    paddingLeft: 12,
+    paddingVertical: Platform.OS === 'ios' ? 8 : 4,
   },
   input: {
     color: COLORS.text,
