@@ -9,6 +9,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Mic, Sparkles } from 'lucide-react-native';
@@ -97,6 +98,16 @@ export default function FloatingOrb() {
     return null;
   }
 
+  const handlePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    openAssistant();
+  };
+
+  const handleLongPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    startQuickVoiceCapture();
+  };
+
   return (
     <Animated.View
       style={[
@@ -120,9 +131,9 @@ export default function FloatingOrb() {
 
       <Pressable
         style={styles.touchArea}
-        onPress={openAssistant}
+        onPress={handlePress}
         delayLongPress={220}
-        onLongPress={startQuickVoiceCapture}
+        onLongPress={handleLongPress}
         accessibilityRole="button"
         accessibilityLabel="Open VIP Copilot"
         accessibilityHint="Tap to open assistant. Long press for quick voice capture."

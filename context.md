@@ -90,3 +90,75 @@ This file tracks user prompts that resulted in project changes, along with the u
 - Prompt: `Implement the plan.`
 - Update: Reworked the parking-to-entry journey into one continuous shell-led flow. Added a context-level `journeyOverlay` state so `GameDayHome` now owns the wallet-style entry pass presentation instead of navigating to the Ticket tab. `ARParkingAssist` now returns to `GameDayHome` and opens the entry pass overlay as soon as parking is confirmed. `ARWalkToGate` now returns to `GameDayHome` in an entry-focused pregame state instead of routing into `PregamePhase`. Inside `GameDayHome`, the parking CTA now progresses from `Open Parking Assist` to `Start Walk Assist`, the new wallet-style pass overlay dims the full screen to black and keeps the pass as the primary object, and the parking/pregame content was updated so the journey stays coherent around the ticket and gate handoff.
 - Files: `context/AppContext.js`, `screens/gameday/GameDayHomeScreen.js`, `screens/gameday/ARParkingAssistScreen.js`, `screens/gameday/ARWalkToGateScreen.js`, `context.md`
+
+### 2026-04-07 22:36:06 EDT
+
+- Prompt: `Implement the plan.`
+- Update: Applied the sharper game-day UX cleanup so the journey leads without a separate status widget or explanatory phase paragraph. In `GameDayHomeScreen`, removed the top `Journey Status` layer, let the phase title carry the moment, and cut phase content down to shorter, job-based blocks. Removed fabricated shell content such as fake timelines, crew status, scoreboard, replay/find-friends, and celebratory/fake traffic states; replaced them with moment-specific content grounded in current ticket, parking, seat, and gate state. In `TicketScreen`, removed the concierge module stack and quick action strip so the screen returns to being ticket-first with a small passive entry-notes section instead of acting like a second game-day launcher. Standardized gate language from `Gate 40` to `Gate 4` in both `DashboardScreen` and `LiveOpsDetailScreen` so the shell and supporting surfaces stop contradicting each other.
+- Files: `screens/gameday/GameDayHomeScreen.js`, `screens/TicketScreen.js`, `screens/DashboardScreen.js`, `screens/LiveOpsDetailScreen.js`, `context.md`
+
+### 2026-04-07 22:44:12 EDT
+
+- Prompt: `ok do whatever u feel is justifed in terms of Users JTBD and preserves look + feel and polish of the app without overdoing anything or adding to clutter`
+- Update: Tightened the two remaining competing entry surfaces without broad redesign. In `TicketScreen`, added a single `Launch Game Day` / `Resume Game Day` CTA directly under the ticket-support notes so the ticket now has one clear way back into the guided journey. In `DashboardScreen`, reduced the live status region to one primary parking card plus two supporting cards (`Entry Pass` and `Weather Watch`) and removed the seat-route status from that stack so Dashboard stays focused on what is next instead of behaving like a second operations console.
+- Files: `screens/TicketScreen.js`, `screens/DashboardScreen.js`, `context.md`
+
+### 2026-04-07 22:49:34 EDT
+
+- Prompt: `[runtime not ready]: ReferenceError: Property 'Trophy' doesn't exist`
+- Update: Fixed the runtime boot error caused by stale `Trophy` icon references after the dashboard and journey cleanup. Replaced the remaining undefined `Trophy` usages in `DashboardScreen` and `GameDayHomeScreen` with the existing `Star` icon so the current installed `lucide-react-native` set is respected and the app can load again without changing dependencies.
+- Files: `screens/DashboardScreen.js`, `screens/gameday/GameDayHomeScreen.js`, `context.md`
+
+### 2026-04-07 23:05:47 EDT
+
+- Prompt: `[Image #1] wtf is this`
+- Update: Tightened the entry-pass handoff so it behaves like a true wallet-mode screen instead of a translucent modal card floating above the journey UI. Reworked the overlay in `GameDayHomeScreen` to use a solid black full-screen safe-area layout, removed outside-tap dismissal behavior, centered the pass as the dominant object, and moved the actions into a dedicated bottom action region with a stronger secondary button so the underlying game-day CTA no longer visually bleeds through.
+- Files: `screens/gameday/GameDayHomeScreen.js`, `context.md`
+
+### 2026-04-07 23:38:21 EDT
+
+- Prompt: `Implement the plan.`
+- Update: Refined the canonical shell-led journey to match the live JTBD feedback without broad redesign. Removed `tailgate` from the primary game-day phase sequence in `AppContext`, changed parking completion so it returns to `parking` without showing the pass, and changed walk completion so reaching Gate 4 is what opens the wallet-style ticket overlay. In `GameDayHomeScreen`, restored a compact `Now / Next` strip in the header, moved weather and wear guidance into the morning card, upgraded travel with route/toll/charge detail plus a real maps launcher, replaced the parking-phase early ticket prompt with a parked-state confirmation, added `Pregame Access`, `In-Game` service, and `Share Game Day` bottom sheets, added a lightweight `MATCH PULSE` card, and changed the ticket overlay CTA so it hands off into pregame access instead of walk assist. Also changed `End Game Day` to reset directly to `Dashboard` so the journey no longer falls back into assist screens via navigation history.
+- Files: `context/AppContext.js`, `screens/gameday/GameDayHomeScreen.js`, `context.md`
+
+### 2026-04-07 23:48:09 EDT
+
+- Prompt: `[Image #1] this is not remotely close to the ticket component we have on the ticket tab. it should be that one exactly.`
+- Update: Replaced the custom entry-pass overlay card with the exact same ticket component used on the Ticket tab. Extracted the full animated flip card, QR back face, shimmer, and brightness behavior into a shared `TicketPassCard` component and wired both `TicketScreen` and the `GameDayHomeScreen` overlay to render that shared component so the pass can no longer visually drift between surfaces.
+- Files: `components/TicketPassCard.js`, `screens/TicketScreen.js`, `screens/gameday/GameDayHomeScreen.js`, `context.md`
+
+### 2026-04-07 EDT
+
+- Prompt: `fix navbar. it is touching screen from left and right. make it normal` -> `make it like this (apple news)`
+- Update: Abandoned the "floating pill" tab bar design in favor of a standard, edge-to-edge iOS native tab bar. Removed horizontal margins and border radius, added a subtle top hairline border (`StyleSheet.hairlineWidth`), and adjusted padding to properly accommodate the iOS home indicator.
+- Files: `App.js`
+
+### 2026-04-07 EDT
+
+- Prompt: `do a UX audit of the app` -> `implement all these changes`
+- Update: Executed a comprehensive UX audit and visual polish pass on the Dashboard and Assistant UI to elevate the "white-glove" premium feel. 
+  - Fixed the Fresno State logo by making the background transparent.
+  - Improved accessibility by lightening the borders on `metaChip` and `countdownChip` (`rgba(255,255,255,0.3)`).
+  - Removed confusing, ambiguous yellow "live indicator" dots across the dashboard and assistant orb to reduce cognitive load.
+  - Simplified the countdown timer to only show days (if > 24 hours) for better scannability.
+  - Eliminated "decision paralysis" on the Hero card by removing redundant "Open Ticket" and secondary journey links, replacing them with a single, high-contrast "Start/Resume Game Day" primary CTA.
+  - Added `numberOfLines={2}` to all status detail text to prevent layout breaks on long strings.
+  - Cleaned up the Copilot input bar by removing borders/backgrounds from the camera and mic icons and increasing input padding for better ergonomics.
+  - Softened the Assistant chat bubble styling (`borderRadius: RADIUS.lg`, lighter border) to differentiate it from actionable cards.
+- Files: `assets/fresno_logo.png`, `screens/DashboardScreen.js`, `components/assistant/FloatingOrb.js`, `components/assistant/AssistantPanel.js`, `components/assistant/VoiceInputControl.js`, `components/assistant/CameraInputControl.js`
+
+### 2026-04-07 EDT
+
+- Prompt: `make the AI orb icon better`
+- Update: Redesigned the floating AI Copilot button. Removed the cramped microphone icon, increased the `Sparkles` icon size to 24, perfectly centered it, and added a subtle glowing maize border (`rgba(255,203,5,0.4)`) to make it feel like a premium, single-purpose magic button.
+- Files: `components/assistant/FloatingOrb.js`
+
+### 2026-04-07 EDT
+
+- Prompt: `what other ideas do u suggest across the app to make it even more polished/thoughful/or add finesse?` -> `i love suggestions 1,2,3 and 4. make a step by step execution plan for each so we do not overlook anything while making something. write plan into a file` -> `yes`
+- Update: Drafted and executed a 4-part "Premium UX Finesse" implementation plan:
+  1. **Max Brightness Ticket Reveal:** Integrated `expo-brightness`. Tapping the 3D ticket to reveal the QR code now automatically cranks system brightness to 100% (the "Gate Ready" pattern) and restores original brightness when flipped back or unmounted.
+  2. **Deliberate Haptic Vocabulary:** Integrated `expo-haptics` to create physical, tactile responses across the app. Added Light impacts to the AI Orb and Quick Actions, Medium impacts to primary navigation buttons, and Heavy impacts to long-presses.
+  3. **Context-Aware Greetings:** Replaced the static "Welcome back" dashboard text with a dynamic greeting generator tied to `opsContext.stage` (e.g., "Game week prep", "Welcome to Ann Arbor", "It's almost time").
+  4. **Compass Haptics for AR Wayfinding:** Added `Magnetometer` from `expo-sensors` to `ARWalkToGateScreen.js`. The phone now acts as a physical compass, pulsing lightly when facing the general direction of the gate, heavily when close, and firing a solid `Success` haptic when perfectly locked onto the target bearing.
+- Files: `screens/TicketScreen.js`, `screens/DashboardScreen.js`, `components/assistant/FloatingOrb.js`, `screens/gameday/ARWalkToGateScreen.js`

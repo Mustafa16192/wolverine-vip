@@ -11,6 +11,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
+import { Magnetometer } from 'expo-sensors';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   ArrowLeft,
@@ -88,6 +89,7 @@ export default function ARWalkToGateScreen({ navigation }) {
   const [cameraError, setCameraError] = useState(null);
   const [requestingPermission, setRequestingPermission] = useState(false);
   const autoRequestedRef = useRef(false);
+  const lastHapticTime = useRef(0);
 
   const {
     goToPhase,
@@ -116,6 +118,55 @@ export default function ARWalkToGateScreen({ navigation }) {
       .catch(() => null)
       .finally(() => setRequestingPermission(false));
   }, [isFocused, permission?.granted, requestPermission]);
+
+  // Directional compass haptics
+  useEffect(() => {
+    let subscription;
+    
+    if (isFocused && permission?.granted && walkAssistSession.status !== 'complete') {
+      // Update relatively frequently to track motion
+      Magnetometer.setUpdateInterval(300);
+      
+      subscription = Magnetometer.addListener(data => {
+        let heading = Math.atan2(data.y, data.x) * (180 / Math.PI);
+        heading = heading >= 0 ? heading : heading + 360;
+        
+        // Simulated target bearing for demo (assume North is 0, target is 90 East)
+        const TARGET_BEARING = 90;
+        
+        let diff = Math.abs(heading - TARGET_BEARING);
+        if (diff > 180) diff = 360 - diff;
+        
+        const now = Date.now();
+        
+        if (diff < 15) {
+          // Locked on
+          if (now - lastHapticTime.current > 1200) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            lastHapticTime.current = now;
+          }
+        } else if (diff < 40) {
+          // Getting close
+          if (now - lastHapticTime.current > 400) {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+            lastHapticTime.current = now;
+          }
+        } else if (diff < 80) {
+          // General direction
+          if (now - lastHapticTime.current > 800) {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            lastHapticTime.current = now;
+          }
+        }
+      });
+    }
+
+    return () => {
+      if (subscription) {
+        subscription.remove();
+      }
+    };
+  }, [isFocused, permission?.granted, walkAssistSession.status]);
 
   const handleBack = () => {
     goToPhase('parking');

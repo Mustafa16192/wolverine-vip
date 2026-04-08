@@ -11,6 +11,7 @@ import {
   Image,
   ImageBackground,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS, CHROME } from '../constants/theme';
@@ -25,7 +26,6 @@ import {
   Clock,
   Route,
   Shield,
-  Trophy,
   Star,
   Cloud,
   Gauge,
@@ -256,8 +256,6 @@ export default function DashboardScreen({ navigation }) {
   const liveOps = useMemo(() => {
     const lot = user?.parking?.lot || 'Gold Lot A';
     const spot = user?.parking?.spot || 'G-142';
-    const section = user?.seat?.section || '24';
-    const row = user?.seat?.row || '10';
     const opponent = featuredGame?.opponent || 'Opponent';
 
     const snapshots = {
@@ -265,55 +263,46 @@ export default function DashboardScreen({ navigation }) {
         parking: { value: `${lot} reserved`, detail: `Season permit active • Spot ${spot}` },
         gate: { value: 'Entry pass ready', detail: `VIP entry is staged for ${opponent}.` },
         weather: { value: 'Game week watch', detail: 'Forecast watch starts automatically during game week.' },
-        walk: { value: `Section ${section}`, detail: 'Best route to your seat is saved.' },
       },
       morning: {
         parking: { value: `${lot} confirmed`, detail: `Arrival window set • Spot ${spot}` },
         gate: { value: 'Entry lane pending', detail: 'Fast-lane recommendation unlocks 24h before kickoff.' },
         weather: { value: 'Low risk', detail: 'Pack a light layer for late wind shift.' },
-        walk: { value: 'Route preview', detail: `Primary path loaded for Section ${section}.` },
       },
       tailgate: {
         parking: { value: `${lot} staging`, detail: `Host team monitoring entry to Spot ${spot}` },
         gate: { value: 'Hospitality check', detail: 'Guest list synced with premium gate staff.' },
         weather: { value: 'Comfortable', detail: 'No rain expected during tailgate window.' },
-        walk: { value: 'Concourse timing', detail: 'Route to suite recalculated every 5 minutes.' },
       },
       travel: {
         parking: { value: `${lot} • ${spot}`, detail: 'Navigation optimized to current traffic flow.' },
-        gate: { value: 'Gate 40 ETA 9m', detail: 'South premium lane trending fastest right now.' },
+        gate: { value: 'Gate 4 ETA 9m', detail: 'South premium lane trending fastest right now.' },
         weather: { value: '52°F • clear', detail: 'Stable conditions from arrival through kickoff.' },
-        walk: { value: '8 min walk', detail: `Recommended path to Section ${section} is clear.` },
       },
       parking: {
         parking: { value: 'Lot arrival active', detail: `${lot} entry open • proceed to Spot ${spot}` },
-        gate: { value: 'Gate 40 ready', detail: 'Host greeting desk has your arrival alert.' },
+        gate: { value: 'Gate 4 ready', detail: 'Host greeting desk has your arrival alert.' },
         weather: { value: '51°F • breeze', detail: 'Concourses are open if wind picks up.' },
-        walk: { value: '6 min to gate', detail: 'Blue route has lowest pedestrian load.' },
       },
       pregame: {
         parking: { value: 'Vehicle secured', detail: `${lot} monitored • valet support available` },
-        gate: { value: 'Gate 40 • 5 min', detail: 'Premium lane currently moving without wait.' },
+        gate: { value: 'Gate 4 • 5 min', detail: 'Premium lane currently moving without wait.' },
         weather: { value: '50°F • clear', detail: 'No weather alerts before kickoff.' },
-        walk: { value: 'Seat route live', detail: `Best path to Section ${section} via east concourse.` },
       },
       ingame: {
         parking: { value: 'Postgame route saved', detail: `Exit pattern preloaded for ${lot}` },
         gate: { value: 'Re-entry active', detail: 'Suite and concourse access remain open.' },
         weather: { value: '49°F • steady', detail: 'No weather impact expected through final whistle.' },
-        walk: { value: 'Concourse low traffic', detail: 'In-seat service path currently clear.' },
       },
       postgame: {
         parking: { value: 'Exit lane open', detail: `${lot} egress moving at low delay` },
-        gate: { value: 'Gate 40 outbound', detail: 'Premium corridor is fastest for departure.' },
+        gate: { value: 'Gate 4 outbound', detail: 'Premium corridor is fastest for departure.' },
         weather: { value: '47°F • clear', detail: 'Dry conditions for walk back to parking.' },
-        walk: { value: '5 min to vehicle', detail: `Staff escort available to Spot ${spot}.` },
       },
       home: {
         parking: { value: 'Trip complete', detail: 'Parking and travel logs archived for this game.' },
         gate: { value: 'Session closed', detail: 'Entry and hospitality timeline captured.' },
         weather: { value: 'Archive synced', detail: 'Game-day weather notes added to your profile.' },
-        walk: { value: 'Next route pending', detail: `Section ${section} route will refresh next matchup.` },
       },
     };
 
@@ -341,13 +330,6 @@ export default function DashboardScreen({ navigation }) {
         value: stageSnapshot.weather.value,
         detail: stageSnapshot.weather.detail,
       },
-      {
-        id: 'walk',
-        icon: Route,
-        title: 'Seat Route',
-        value: stageSnapshot.walk.value,
-        detail: stageSnapshot.walk.detail,
-      },
     ];
   }, [user, featuredGame?.opponent, opsContext.stage]);
 
@@ -356,32 +338,38 @@ export default function DashboardScreen({ navigation }) {
     countdown.totalMs > 0
       ? (countdown.days > 0 ? `Kickoff in ${countdown.days} Days` : `Kickoff in ${countdown.hours}h ${countdown.mins}m`)
       : 'Kickoff window is active';
-  const modeCtaText = 'Open Ticket';
   const journeyCtaText = isGameDay ? 'Resume Game Day' : 'Start Game Day';
-  const primaryStatusId = useMemo(() => {
-    const stagePrimaryMap = {
-      season: 'parking',
-      morning: 'parking',
-      tailgate: 'gate',
-      travel: 'parking',
-      parking: 'parking',
-      pregame: 'gate',
-      ingame: 'walk',
-      postgame: 'parking',
-      home: 'parking',
-    };
+  const primaryStatus = liveOps.find(item => item.id === 'parking') || liveOps[0];
+  const secondaryStatuses = liveOps.filter(item => item.id === 'gate' || item.id === 'weather');
 
-    return stagePrimaryMap[opsContext.stage] || 'parking';
-  }, [opsContext.stage]);
-
-  const primaryStatus = liveOps.find(item => item.id === primaryStatusId) || liveOps[0];
-  const secondaryStatuses = liveOps.filter(item => item.id !== primaryStatus.id).slice(0, 2);
+  const greetingText = useMemo(() => {
+    const name = user?.name || 'Member';
+    switch (opsContext.stage) {
+      case 'season':
+      case 'morning':
+        return `Game week prep, ${name}.`;
+      case 'tailgate':
+        return `Tailgate is active, ${name}.`;
+      case 'travel':
+        return `Safe travels, ${name}.`;
+      case 'parking':
+        return `Welcome to Ann Arbor, ${name}.`;
+      case 'pregame':
+        return `It's almost time, ${name}.`;
+      case 'ingame':
+        return `Go Blue, ${name}.`;
+      case 'postgame':
+      case 'home':
+        return `Game over, ${name}.`;
+      default:
+        return `Welcome back, ${name}.`;
+    }
+  }, [opsContext.stage, user?.name]);
 
   const getPrimaryCta = (id) => {
     switch(id) {
       case 'parking': return 'View parking pass & route';
       case 'gate': return 'Open VIP barcode';
-      case 'walk': return 'Start seat navigation';
       default: return 'View details';
     }
   };
@@ -391,17 +379,18 @@ export default function DashboardScreen({ navigation }) {
     switch(id) {
       case 'gate': return 'View barcode';
       case 'weather': return 'View forecast';
-      case 'walk': return 'View stadium map';
       case 'parking': return 'View parking pass';
       default: return 'View details';
     }
   };
 
   const launchJourneyWithIntent = (intent = 'journey') => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     enterGameDay({ intent });
     navigation.navigate('GameDayHome');
   };
   const openLiveOpsDetail = (opId) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     navigation.navigate('LiveOpsDetail', {
       opId,
       stage: opsContext.stage,
@@ -412,9 +401,11 @@ export default function DashboardScreen({ navigation }) {
   };
 
   const handlePrimaryModeAction = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     navigation.navigate('Ticket');
   };
   const handleSecondaryHeroAction = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     launchJourneyWithIntent('journey');
   };
   const PrimaryStatusIcon = primaryStatus.icon;
@@ -431,7 +422,7 @@ export default function DashboardScreen({ navigation }) {
               <View style={styles.liveIndicator}>
                 <Text style={styles.liveText}>{isGameDay ? 'GAME DAY HQ' : 'THE VICTORS HQ'}</Text>
               </View>
-              <Text style={styles.username}>Welcome back, {user?.name || 'Member'}</Text>
+              <Text style={styles.username}>{greetingText}</Text>
             </View>
           </View>
 
@@ -675,7 +666,7 @@ export default function DashboardScreen({ navigation }) {
             </View>
 
             <View style={styles.legacyStats}>
-              <LegacyStat icon={Trophy} value={`${user?.stats?.winsWitnessed || 84}`} label="Wins Witnessed" />
+              <LegacyStat icon={Star} value={`${user?.stats?.winsWitnessed || 84}`} label="Wins Witnessed" />
               <LegacyStat icon={Star} value={`${user?.yearsAsMember || 12} yrs`} label="Member Tenure" />
               <LegacyStat icon={Gauge} value={user?.stats?.fanRank || 'Top 5%'} label="Fan Rank" />
               <LegacyStat icon={Users} value="Mar 15" label="Renewal Window" />
@@ -718,18 +709,16 @@ export default function DashboardScreen({ navigation }) {
   );
 }
 
-function ActionPill({ icon: Icon, label, onPress }) {
-  return (
-    <TouchableOpacity style={styles.actionPill} activeOpacity={0.9} onPress={onPress}>
-      <Icon size={16} color={COLORS.maize} />
-      <Text style={styles.actionPillText}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
 function ActionTile({ icon: Icon, label, detail, onPress }) {
   return (
-    <TouchableOpacity style={styles.actionTile} activeOpacity={0.92} onPress={onPress}>
+    <TouchableOpacity 
+      style={styles.actionTile} 
+      activeOpacity={0.92} 
+      onPress={(e) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        onPress?.(e);
+      }}
+    >
       <BlurView intensity={18} tint="dark" style={StyleSheet.absoluteFill} />
       <View style={styles.actionTileIconWrap}>
         <Icon size={18} color={COLORS.maize} />
@@ -1518,22 +1507,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: SPACING.s,
     marginBottom: SPACING.m,
-  },
-  actionPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    borderRadius: RADIUS.full,
-    backgroundColor: CHROME.surface.elevated,
-    borderWidth: 1,
-    borderColor: CHROME.surface.borderSoft,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  actionPillText: {
-    color: COLORS.text,
-    fontSize: TYPOGRAPHY.fontSize.sm,
-    fontFamily: 'Montserrat_600SemiBold',
   },
   actionTile: {
     width: '48.7%',

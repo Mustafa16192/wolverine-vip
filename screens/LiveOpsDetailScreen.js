@@ -70,7 +70,7 @@ function getOpConfig({ opId, stage, user, opponent, kickoff, isHome }) {
         `Approach ${lot} through the premium lane entrance.`,
         `Present permit ID VIP-${spot.charAt(0)}-24 at checkpoint.`,
         `Park at ${spot} and confirm vehicle tag in app.`,
-        'Follow Blue Route path to Gate 40 host desk.',
+        'Follow Blue Route path to Gate 4 host desk.',
       ],
       metrics: [
         { label: 'ETA', value: stage === 'parking' ? '4 min' : '12 min' },
@@ -90,9 +90,9 @@ function getOpConfig({ opId, stage, user, opponent, kickoff, isHome }) {
       summary: 'Live queue intelligence for fastest premium lane and host coordination.',
       imageUri: '',
       imageLabel: 'Gate Status',
-      priority: stage === 'pregame' ? 'Use Gate 40 now.' : 'Predictive routing is active.',
+      priority: stage === 'pregame' ? 'Use Gate 4 now.' : 'Predictive routing is active.',
       steps: [
-        'Use Gate 40 premium corridor at south approach.',
+        'Use Gate 4 premium corridor at south approach.',
         'Host Dana is assigned at the greeting desk.',
         'Scan VIP pass for expedited lane access.',
         `Proceed to Section ${section}, Row ${row} through East concourse.`,
@@ -142,7 +142,7 @@ function getOpConfig({ opId, stage, user, opponent, kickoff, isHome }) {
       imageLabel: 'Route Map',
       priority: stage === 'travel' ? 'Route is live now.' : 'Best path is ready.',
       steps: [
-        `From ${lot}, follow Blue Route to Gate 40.`,
+        `From ${lot}, follow Blue Route to Gate 4.`,
         'Use premium corridor to skip standard concourse queues.',
         `Turn at East concourse and continue to Section ${section}.`,
         'In-seat staff support unlocks once you arrive at your row.',

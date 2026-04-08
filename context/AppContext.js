@@ -9,7 +9,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
  */
 
 const AppContext = createContext();
-const GAME_DAY_PHASES = ['morning', 'tailgate', 'travel', 'parking', 'pregame', 'ingame', 'postgame', 'home'];
+const GAME_DAY_PHASES = ['morning', 'travel', 'parking', 'pregame', 'ingame', 'postgame', 'home'];
 const PARKING_ASSIST_STEPS = [
   {
     id: 'lot-entry',
@@ -144,7 +144,7 @@ export function AppProvider({ children }) {
   const [manualModeOverride, setManualModeOverride] = useState(null);
   const [currentGame, setCurrentGame] = useState(null);
   const [nextGame, setNextGame] = useState(null);
-  const [gameDayPhase, setGameDayPhase] = useState('morning'); // morning, tailgate, travel, parking, pregame, ingame, postgame, home
+  const [gameDayPhase, setGameDayPhase] = useState('morning'); // morning, travel, parking, pregame, ingame, postgame, home
   const [journeyOverlay, setJourneyOverlay] = useState(null);
   const [parkingAssistSession, setParkingAssistSession] = useState({
     status: 'idle',
@@ -164,8 +164,7 @@ export function AppProvider({ children }) {
     // Positive values are hours until kickoff; negatives are hours after kickoff.
     const deltaHours = (kickoff.getTime() - Date.now()) / (1000 * 60 * 60);
 
-    if (deltaHours > 6) return 'morning';
-    if (deltaHours > 3) return 'tailgate';
+    if (deltaHours > 4) return 'morning';
     if (deltaHours > 1.5) return 'travel';
     if (deltaHours > 0.5) return 'parking';
     if (deltaHours > 0) return 'pregame';
@@ -327,7 +326,7 @@ export function AppProvider({ children }) {
       completedAt: new Date().toISOString(),
     });
     setGameDayPhase('parking');
-    setJourneyOverlay('ticket_ready');
+    setJourneyOverlay(null);
   };
 
   const resetParkingAssist = () => {
@@ -390,7 +389,7 @@ export function AppProvider({ children }) {
       completedAt: new Date().toISOString(),
     });
     setGameDayPhase('pregame');
-    setJourneyOverlay(null);
+    setJourneyOverlay('ticket_ready');
   };
 
   const resetWalkAssist = () => {

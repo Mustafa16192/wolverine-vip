@@ -3,36 +3,24 @@ import {
   View,
   Text,
   StyleSheet,
-  Dimensions,
   SafeAreaView,
   TouchableOpacity,
   ScrollView,
-  Image,
-  Animated,
   StatusBar,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { COLORS, SPACING, SHADOWS, TYPOGRAPHY, RADIUS, CHROME } from '../constants/theme';
 import {
-  QrCode,
-  Utensils,
   Sparkles,
   Shield,
-  Car,
-  Clock,
-  Route,
-  Users,
   ChevronRight,
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { useApp } from '../context/AppContext';
 import AppBackground from '../components/chrome/AppBackground';
+import TicketPassCard from '../components/TicketPassCard';
 import { registerTicketFlipHandler, unregisterTicketFlipHandler } from '../assistant/ticketFlipBridge';
-
-const { width } = Dimensions.get('window');
-const CARD_WIDTH = width - SPACING.l * 2;
-const CARD_HEIGHT = 420;
 
 /**
  * TicketScreen - "Seat Command" Digital Season Pass
@@ -42,144 +30,24 @@ const CARD_HEIGHT = 420;
  */
 
 export default function TicketScreen({ navigation }) {
-  const { user, currentGame, nextGame, enterGameDay } = useApp();
-  const [isFlipped, setIsFlipped] = useState(false);
-  const flipAnim = useRef(new Animated.Value(0)).current;
-  const tapAnim = useRef(new Animated.Value(0)).current;
-  const shimmerAnim = useRef(new Animated.Value(0)).current;
+  const { user, currentGame, nextGame, isGameDay, enterGameDay } = useApp();
+  const ticketCardRef = useRef(null);
   const featuredGame = currentGame || nextGame;
 
-  // Shimmer effect
   useEffect(() => {
-    const shimmer = Animated.loop(
-      Animated.timing(shimmerAnim, {
-        toValue: 1,
-        duration: 2000,
-        useNativeDriver: true,
-      })
-    );
-    shimmer.start();
-    return () => shimmer.stop();
-  }, []);
+    const handleFlip = () => {
+      ticketCardRef.current?.flip();
+    };
 
-  const handleFlip = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setIsFlipped((previous) => {
-      const toValue = previous ? 0 : 1;
-      Animated.parallel([
-        Animated.spring(flipAnim, {
-          toValue,
-          friction: 7,
-          tension: 70,
-          useNativeDriver: true,
-        }),
-        Animated.sequence([
-          Animated.timing(tapAnim, {
-            toValue: 1,
-            duration: 85,
-            useNativeDriver: true,
-          }),
-          Animated.spring(tapAnim, {
-            toValue: 0,
-            friction: 6,
-            tension: 130,
-            useNativeDriver: true,
-          }),
-        ]),
-      ]).start();
-      return !previous;
-    });
-  }, [flipAnim, tapAnim]);
-
-  useEffect(() => {
     registerTicketFlipHandler(handleFlip);
     return () => unregisterTicketFlipHandler(handleFlip);
-  }, [handleFlip]);
-
-  // Interpolations for card flip
-  const frontRotateY = flipAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '180deg'],
   });
 
-  const backRotateY = flipAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['180deg', '360deg'],
-  });
-
-  const frontOpacity = flipAnim.interpolate({
-    inputRange: [0, 0.49, 0.5, 1],
-    outputRange: [1, 1, 0, 0],
-  });
-
-  const backOpacity = flipAnim.interpolate({
-    inputRange: [0, 0.5, 0.51, 1],
-    outputRange: [0, 0, 1, 1],
-  });
-
-  const flipScale = flipAnim.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [1, 0.965, 1],
-  });
-
-  const tapScale = tapAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 0.985],
-  });
-
-  const cardLift = flipAnim.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [0, -3, 0],
-  });
-
-  const shimmerTranslate = shimmerAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-CARD_WIDTH, CARD_WIDTH],
-  });
-
-  const enterGameDayWithIntent = (intent) => {
-    enterGameDay({ intent });
-    navigation.navigate('Home', { screen: 'GameDayHome' });
+  const handleLaunchGameDay = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    enterGameDay({ intent: 'journey' });
+    navigation.navigate('GameDayHome');
   };
-
-  const conciergeModules = [
-    {
-      id: 'arrival',
-      icon: Car,
-      title: 'Arrival Orchestration',
-      subtitle: `${user.parking.lot} • Spot ${user.parking.spot}`,
-      detail: 'Dedicated host at Gate 40 with fast-lane check-in.',
-      cta: 'Launch Parking Guidance',
-      action: () => navigation.navigate('Home', { screen: 'LiveOpsDetail', params: { opId: 'parking' } }),
-    },
-    {
-      id: 'entry',
-      icon: Shield,
-      title: 'Entry & Security Lane',
-      subtitle: 'Premium lane credentials synced',
-      detail: 'Credential pre-check enabled. Queue model refreshes every minute.',
-      cta: 'Open Gate Routing',
-      action: () => navigation.navigate('Home', { screen: 'LiveOpsDetail', params: { opId: 'gate' } }),
-    },
-    {
-      id: 'hospitality',
-      icon: Utensils,
-      title: 'In-Seat Hospitality',
-      subtitle: 'Chef pickup + in-seat delivery windows',
-      detail: 'Reserve halftime tray, beverage pairing, and suite-level service.',
-      cta: 'Activate In-Seat Service',
-      action: () => enterGameDayWithIntent('ingame'),
-    },
-    {
-      id: 'postgame',
-      icon: Users,
-      title: 'Postgame Privileges',
-      subtitle: 'Tunnel escort and field access queue',
-      detail: 'Your premium postgame route is staged for controlled access.',
-      cta: 'Open Postgame Plan',
-      action: () => enterGameDayWithIntent('postgame'),
-    },
-  ];
 
   return (
     <View style={styles.container}>
@@ -202,164 +70,11 @@ export default function TicketScreen({ navigation }) {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* The Golden Ticket */}
-          <TouchableOpacity
-            onPress={handleFlip}
-            activeOpacity={0.95}
-            style={styles.cardTouchable}
-          >
-            <Animated.View
-              style={[
-                styles.cardContainer,
-                {
-                  transform: [
-                    { translateY: cardLift },
-                    { scale: flipScale },
-                    { scale: tapScale },
-                  ],
-                },
-              ]}
-            >
-              {/* Front of Card */}
-              <Animated.View
-                style={[
-                  styles.ticketCard,
-                  styles.frontCard,
-                  {
-                    opacity: frontOpacity,
-                    transform: [
-                      { perspective: 1400 },
-                      { rotateY: frontRotateY },
-                    ],
-                  },
-                ]}
-              >
-                <LinearGradient
-                  colors={[COLORS.blue, 'rgba(0,39,76,0.95)', 'rgba(0,39,76,0.9)']}
-                  locations={[0, 0.6, 1]}
-                  style={StyleSheet.absoluteFill}
-                />
+          <TicketPassCard ref={ticketCardRef} user={user} />
 
-                {/* Shimmer effect */}
-                <Animated.View
-                  style={[
-                    styles.shimmer,
-                    { transform: [{ translateX: shimmerTranslate }] },
-                  ]}
-                >
-                  <LinearGradient
-                    colors={['transparent', 'rgba(255,203,5,0.1)', 'transparent']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={StyleSheet.absoluteFill}
-                  />
-                </Animated.View>
-
-                {/* Top accent */}
-                <View style={styles.cardAccent} />
-
-                {/* Card content */}
-                <View style={styles.cardContent}>
-                  {/* Header row */}
-                  <View style={styles.cardHeader}>
-                    <View>
-                      <Text style={styles.seasonBadge}>2026 SEASON</Text>
-                      <Text style={styles.passType}>VIP PASS</Text>
-                    </View>
-                    <Image
-                      source={require('../assets/um-logo-outlined.png')}
-                      style={styles.cardLogo}
-                    />
-                  </View>
-
-                  {/* Seat information */}
-                  <View style={styles.seatGrid}>
-                    <View style={styles.seatItem}>
-                      <Text style={styles.seatLabel}>SECTION</Text>
-                      <Text style={styles.seatValue}>{user.seat.section}</Text>
-                    </View>
-                    <View style={styles.seatDivider} />
-                    <View style={styles.seatItem}>
-                      <Text style={styles.seatLabel}>ROW</Text>
-                      <Text style={styles.seatValue}>{user.seat.row}</Text>
-                    </View>
-                    <View style={styles.seatDivider} />
-                    <View style={styles.seatItem}>
-                      <Text style={styles.seatLabel}>SEAT</Text>
-                      <Text style={styles.seatValue}>{user.seat.seat}</Text>
-                    </View>
-                  </View>
-
-                  {/* Holder info */}
-                  <View style={styles.holderSection}>
-                    <View style={styles.holderRow}>
-                      <View>
-                        <Text style={styles.holderLabel}>TICKET HOLDER</Text>
-                        <Text style={styles.holderName}>{user.name.toUpperCase()}</Text>
-                      </View>
-                      <View style={styles.verifiedBadge}>
-                        <Sparkles size={12} color={COLORS.blue} />
-                        <Text style={styles.verifiedText}>VERIFIED</Text>
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* Bottom row */}
-                  <View style={styles.cardFooter}>
-                    <Text style={styles.footerText}>THE BIG HOUSE</Text>
-                    <Text style={styles.footerText}>ANN ARBOR, MI</Text>
-                  </View>
-                </View>
-
-                {/* Decorative corner accent */}
-                <View style={styles.cornerAccent} />
-              </Animated.View>
-
-              {/* Back of Card (QR Code) */}
-              <Animated.View
-                style={[
-                  styles.ticketCard,
-                  styles.backCard,
-                  {
-                    opacity: backOpacity,
-                    transform: [
-                      { perspective: 1400 },
-                      { rotateY: backRotateY },
-                    ],
-                  },
-                ]}
-              >
-                <LinearGradient
-                  colors={[COLORS.maize, COLORS.maize, 'rgba(255,203,5,0.95)']}
-                  style={StyleSheet.absoluteFill}
-                />
-
-                <View style={styles.qrSection}>
-                  <Text style={styles.qrTitle}>SCAN FOR ENTRY</Text>
-                  <View style={styles.qrContainer}>
-                    <QrCode size={160} color={COLORS.blue} strokeWidth={1.5} />
-                  </View>
-                  <Text style={styles.qrSubtitle}>Present at gate for access</Text>
-                </View>
-
-                {/* Decorative footer */}
-                <View style={styles.backFooter}>
-                  <View style={styles.backFooterLine} />
-                  <Text style={styles.backFooterText}>WOLVERINE VIP</Text>
-                  <View style={styles.backFooterLine} />
-                </View>
-              </Animated.View>
-            </Animated.View>
-          </TouchableOpacity>
-
-          {/* Hint text */}
-          <View style={styles.hintContainer}>
-            <Text style={styles.hintText}>Tap card to {isFlipped ? 'hide' : 'reveal'} QR code</Text>
-          </View>
-
-          {/* Concierge Section */}
+          {/* Entry Notes */}
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>VIP CONCIERGE</Text>
+            <Text style={styles.sectionTitle}>ENTRY NOTES</Text>
           </View>
 
           <View style={styles.conciergeHero}>
@@ -367,64 +82,37 @@ export default function TicketScreen({ navigation }) {
             <View style={styles.conciergeHeroTop}>
               <View style={styles.conciergeChip}>
                 <Sparkles size={12} color={COLORS.maize} />
-                <Text style={styles.conciergeChipText}>Today&apos;s Host Plan</Text>
+                <Text style={styles.conciergeChipText}>Ticket-Only Context</Text>
               </View>
-              <Text style={styles.conciergeHeroTitle}>Premium Game Day Control</Text>
+              <Text style={styles.conciergeHeroTitle}>Keep This Ready At The Gate</Text>
             </View>
             <Text style={styles.conciergeHeroMeta}>
-              {featuredGame?.opponent ? `vs ${featuredGame.opponent}` : 'Next home matchup'} • {featuredGame?.time || '12:00 PM'}
+              Gate 4 • {featuredGame?.time || '12:00 PM'} kickoff
             </Text>
             <Text style={styles.conciergeHeroHint}>
-              Arrival, gate, hospitality, and postgame privileges are coordinated here.
+              Present the QR code at entry, then move directly to Section {user.seat.section}. Parking remains pinned to {user.parking.lot} • {user.parking.spot}.
             </Text>
           </View>
 
-          <View style={styles.moduleStack}>
-            {conciergeModules.map(module => {
-              const Icon = module.icon;
-              return (
-                <TouchableOpacity
-                  key={module.id}
-                  style={styles.moduleCard}
-                  activeOpacity={0.88}
-                  onPress={module.action}
-                >
-                  <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
-                  <View style={styles.moduleHeader}>
-                    <View style={styles.moduleIconWrap}>
-                      <Icon size={16} color={COLORS.maize} />
-                    </View>
-                    <Text style={styles.moduleTitle}>{module.title}</Text>
-                  </View>
-                  <Text style={styles.moduleSubtitle}>{module.subtitle}</Text>
-                  <Text style={styles.moduleDetail}>{module.detail}</Text>
-                  <View style={styles.moduleFooter}>
-                    <Text style={styles.moduleCta}>{module.cta}</Text>
-                    <ChevronRight size={16} color={COLORS.maize} />
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          <View style={styles.quickActionRow}>
-            <TouchableOpacity
-              style={styles.quickAction}
-              activeOpacity={0.85}
-              onPress={() => navigation.navigate('Home', { screen: 'LiveOpsDetail', params: { opId: 'walk' } })}
-            >
-              <Route size={14} color={COLORS.maize} />
-              <Text style={styles.quickActionText}>Route to Section {user.seat.section}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.quickAction}
-              activeOpacity={0.85}
-              onPress={() => navigation.navigate('Home', { screen: 'LiveOpsDetail', params: { opId: 'weather' } })}
-            >
-              <Clock size={14} color={COLORS.maize} />
-              <Text style={styles.quickActionText}>Kickoff Conditions</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={styles.journeyLaunchButton}
+            activeOpacity={0.92}
+            onPress={handleLaunchGameDay}
+          >
+            <LinearGradient
+              colors={[COLORS.maize, '#E7B600']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.journeyLaunchContent}>
+              <Shield size={16} color={COLORS.blue} />
+              <Text style={styles.journeyLaunchText}>
+                {isGameDay ? 'Resume Game Day' : 'Launch Game Day'}
+              </Text>
+              <ChevronRight size={16} color={COLORS.blue} />
+            </View>
+          </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -749,6 +437,29 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.fontSize.sm,
     lineHeight: 18,
     fontFamily: 'AtkinsonHyperlegible_400Regular',
+  },
+  journeyLaunchButton: {
+    width: '100%',
+    borderRadius: RADIUS.full,
+    overflow: 'hidden',
+    marginBottom: SPACING.m,
+    borderTopWidth: 1.5,
+    borderTopColor: 'rgba(255,255,255,0.45)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.25)',
+  },
+  journeyLaunchContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.m,
+    paddingVertical: 14,
+  },
+  journeyLaunchText: {
+    color: COLORS.blue,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 1,
   },
   moduleStack: {
     width: '100%',
