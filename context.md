@@ -127,6 +127,24 @@ This file tracks user prompts that resulted in project changes, along with the u
 - Update: Replaced the custom entry-pass overlay card with the exact same ticket component used on the Ticket tab. Extracted the full animated flip card, QR back face, shimmer, and brightness behavior into a shared `TicketPassCard` component and wired both `TicketScreen` and the `GameDayHomeScreen` overlay to render that shared component so the pass can no longer visually drift between surfaces.
 - Files: `components/TicketPassCard.js`, `screens/TicketScreen.js`, `screens/gameday/GameDayHomeScreen.js`, `context.md`
 
+### 2026-04-07 23:50:31 EDT
+
+- Prompt: `[runtime not ready]: ReferenceError: Property 'CARD_WIDTH' doesn't exist`
+- Update: Fixed a runtime boot error caused by stale dead styles left behind in `TicketScreen` after extracting the shared ticket component. Replaced the orphaned `CARD_WIDTH` / `CARD_HEIGHT` references in the unused legacy style block with literal values so the module can evaluate cleanly while still using `TicketPassCard` as the real rendered surface.
+- Files: `screens/TicketScreen.js`, `context.md`
+
+### 2026-04-07 23:54:02 EDT
+
+- Prompt: `there is a weird disjointed dark pane that visibly slides up from the bottom whenever a bottom sheet appears what is that can it be handled better?`
+- Update: Softened the game-day bottom sheet presentation in `GameDayHomeScreen`. The sheet modal was using the platform `slide` animation, which caused the entire full-screen dark container to visibly slide upward before the sheet content settled. Switched the sheet modal to `fade`, kept it over-full-screen, reduced the backdrop opacity, and capped the sheet height so the background now fades in while the bottom sheet reads as a cleaner overlay instead of a giant dark pane.
+- Files: `screens/gameday/GameDayHomeScreen.js`, `context.md`
+
+### 2026-04-07 23:57:28 EDT
+
+- Prompt: `[Image #1] the now and next pill is in a very awkward position on the page. what is the best and most tasteful way to handle it?`
+- Update: Removed the floating `Now / Next` capsule from the game-day header and converted that status into a quieter inline metadata row under the matchup title. This keeps the information the user wanted, but removes the extra bordered object that was competing with the main phase card and creating an awkward gap in the hierarchy. The header now reads more like a single composed block instead of badge -> title -> floating pill -> card.
+- Files: `screens/gameday/GameDayHomeScreen.js`, `context.md`
+
 ### 2026-04-07 EDT
 
 - Prompt: `fix navbar. it is touching screen from left and right. make it normal` -> `make it like this (apple news)`
@@ -162,3 +180,15 @@ This file tracks user prompts that resulted in project changes, along with the u
   3. **Context-Aware Greetings:** Replaced the static "Welcome back" dashboard text with a dynamic greeting generator tied to `opsContext.stage` (e.g., "Game week prep", "Welcome to Ann Arbor", "It's almost time").
   4. **Compass Haptics for AR Wayfinding:** Added `Magnetometer` from `expo-sensors` to `ARWalkToGateScreen.js`. The phone now acts as a physical compass, pulsing lightly when facing the general direction of the gate, heavily when close, and firing a solid `Success` haptic when perfectly locked onto the target bearing.
 - Files: `screens/TicketScreen.js`, `screens/DashboardScreen.js`, `components/assistant/FloatingOrb.js`, `screens/gameday/ARWalkToGateScreen.js`
+
+### 2026-04-07 EDT
+
+- Prompt: `can you make the UI better for the Now and next stage? it looks so shit right now. make it match the look and feel of the rest of the screen?`
+- Update: Redesigned the "NOW / NEXT" phase indicator in `GameDayHomeScreen.js`. Replaced the basic bordered pill with a premium `BlurView` backdrop, changed the vertical divider to a `ChevronRight` icon to imply forward momentum, and used Michigan Maize for the current phase label to provide strong contrast and visual hierarchy.
+- Files: `screens/gameday/GameDayHomeScreen.js`
+
+### 2026-04-07 23:56:55 EDT
+
+- Prompt: `upadte whatever we have done into wolverine-vip/context.md`
+- Update: Reconciled `context.md` with the full late-session game-day shell pass so the log now clearly captures the canonical flow adjustments, the shared ticket component extraction, the `CARD_WIDTH` runtime fix, the improved bottom-sheet presentation, and the removal of the awkward floating `Now / Next` pill in favor of a quieter inline metadata row.
+- Files: `context.md`

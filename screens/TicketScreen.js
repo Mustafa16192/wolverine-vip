@@ -164,8 +164,8 @@ const styles = StyleSheet.create({
     marginTop: SPACING.m,
   },
   cardContainer: {
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
+    width: '100%',
+    height: 420,
     ...SHADOWS.xl,
   },
   ticketCard: {

@@ -307,16 +307,12 @@ export default function GameDayHomeScreen({ navigation }) {
             <Text style={styles.headerOpponent}>
               vs {game?.opponent || 'Ohio State'}
             </Text>
-            <View style={styles.phaseStrip}>
-              <View style={styles.phaseStripItem}>
-                <Text style={styles.phaseStripLabel}>NOW</Text>
-                <Text style={styles.phaseStripValue}>{currentPhaseData?.label || 'WAKE UP'}</Text>
-              </View>
-              <View style={styles.phaseStripDivider} />
-              <View style={styles.phaseStripItem}>
-                <Text style={styles.phaseStripLabel}>NEXT</Text>
-                <Text style={styles.phaseStripValue}>{nextPhaseData?.label || 'FINISH'}</Text>
-              </View>
+            <View style={styles.phaseMetaRow}>
+              <Text style={styles.phaseMetaLabel}>Now</Text>
+              <Text style={styles.phaseMetaValueCurrent}>{currentPhaseData?.label || 'WAKE UP'}</Text>
+              <Text style={styles.phaseMetaDivider}>•</Text>
+              <Text style={styles.phaseMetaLabel}>Next</Text>
+              <Text style={styles.phaseMetaValue}>{nextPhaseData?.label || 'FINISH'}</Text>
             </View>
           </View>
           <View style={styles.headerSpacer} />
@@ -437,7 +433,8 @@ export default function GameDayHomeScreen({ navigation }) {
       <Modal
         visible={!!activeSheet}
         transparent
-        animationType="slide"
+        animationType="fade"
+        presentationStyle="overFullScreen"
         onRequestClose={closeSheet}
       >
         <View style={styles.sheetBackdrop}>
@@ -1244,37 +1241,34 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.fontSize.lg,
     fontFamily: 'Montserrat_700Bold',
   },
-  phaseStrip: {
+  phaseMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: SPACING.s,
-    marginTop: SPACING.s,
-    paddingHorizontal: SPACING.s,
-    paddingVertical: 6,
-    borderRadius: RADIUS.full,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: SPACING.xs,
   },
-  phaseStripItem: {
-    gap: 2,
-  },
-  phaseStripLabel: {
+  phaseMetaLabel: {
     color: COLORS.textTertiary,
-    fontSize: 9,
-    fontFamily: 'Montserrat_700Bold',
-    letterSpacing: 1,
-  },
-  phaseStripValue: {
-    color: COLORS.text,
     fontSize: TYPOGRAPHY.fontSize.xs,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 0.8,
+  },
+  phaseMetaValueCurrent: {
+    color: COLORS.maize,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    fontFamily: 'Montserrat_700Bold',
+  },
+  phaseMetaValue: {
+    color: COLORS.textSecondary,
+    fontSize: TYPOGRAPHY.fontSize.sm,
     fontFamily: 'Montserrat_600SemiBold',
   },
-  phaseStripDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+  phaseMetaDivider: {
+    color: 'rgba(255,255,255,0.28)',
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    fontFamily: 'Montserrat_700Bold',
+    marginHorizontal: 2,
   },
 
   // Main Content
@@ -1552,7 +1546,7 @@ const styles = StyleSheet.create({
   sheetBackdrop: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(0,0,0,0.38)',
   },
   sheetCard: {
     borderTopLeftRadius: 28,
@@ -1564,6 +1558,7 @@ const styles = StyleSheet.create({
     paddingTop: SPACING.s,
     paddingBottom: Platform.OS === 'ios' ? 36 : SPACING.l,
     minHeight: 260,
+    maxHeight: '78%',
   },
   sheetHandle: {
     width: 46,
