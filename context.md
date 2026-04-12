@@ -184,7 +184,7 @@ This file tracks user prompts that resulted in project changes, along with the u
 ### 2026-04-07 EDT
 
 - Prompt: `can you make the UI better for the Now and next stage? it looks so shit right now. make it match the look and feel of the rest of the screen?`
-- Update: Redesigned the "NOW / NEXT" phase indicator in `GameDayHomeScreen.js`. Replaced the basic bordered pill with a premium `BlurView` backdrop, changed the vertical divider to a `ChevronRight` icon to imply forward momentum, and used Michigan Maize for the current phase label to provide strong contrast and visual hierarchy.
+- Update: Redesigned the "NOW / NEXT" phase indicator in `GameDayHomeScreen.js`. Replaced the basic bordered pill with a premium `BlurView` backdrop, changed the vertical divider to a `ChevronRight` icon to imply forward momentum, and used Michigan Maize for the current phase label to provide strong contrast and visual hierarchy. Also improved the "Wake Up" phase card UI by upgrading the Departure Readiness text into clear, structured bento-style summary cards.
 - Files: `screens/gameday/GameDayHomeScreen.js`
 
 ### 2026-04-07 23:56:55 EDT
@@ -192,3 +192,27 @@ This file tracks user prompts that resulted in project changes, along with the u
 - Prompt: `upadte whatever we have done into wolverine-vip/context.md`
 - Update: Reconciled `context.md` with the full late-session game-day shell pass so the log now clearly captures the canonical flow adjustments, the shared ticket component extraction, the `CARD_WIDTH` runtime fix, the improved bottom-sheet presentation, and the removal of the awkward floating `Now / Next` pill in favor of a quieter inline metadata row.
 - Files: `context.md`
+
+### 2026-04-08 EDT
+
+- Prompt: `make a whole ass PRD for the current state of the app... actually just update my "Victor’s Club PRD.pdf"`
+- Update: Replaced the outdated Victor's Club PDF with a fresh final PRD based on the current Wolverine VIP app state. Wrote a new source document that reframes the product around the actual shipped shell-led journey, clarifies the current requirements for dashboard, game-day flow, parking/walk assist, ticket consistency, supporting tabs, and AI copilot, and explicitly updates scope, risks, and open questions. Added a local PDF generator so the maintained markdown source can be rendered back into `Victor’s Club PRD.pdf` without relying on external tooling.
+- Files: `Victor’s Club PRD.pdf`, `Victors_Club_PRD_Current.md`, `final_assignment/generate_prd_pdf.py`, `context.md`
+
+### 2026-04-08 EDT
+
+- Prompt: `make it into a google doc using gws` -> `make sure the headers and formatting etc are correct`
+- Update: Created a native Google Doc version of the final PRD through `gws`, wrote the full current PRD content into it, and then reformatted it in place using the Docs API. Applied proper title, section heading, subsection heading, and bullet formatting so the document now reads like a real structured PRD instead of a raw text paste. Verified through the Docs API that the title resolved as `TITLE`, main sections as `HEADING_1`, subsections as `HEADING_2`, and bullet groups as real list paragraphs.
+- Files: `Victors_Club_PRD_Current.md`, `context.md`
+
+### 2026-04-08 EDT
+
+- Prompt: `also do this: If you want, I can do one last editorial polish pass next: better spacing between sections, cleaner top metadata styling, and slightly more “Google PM doc” visual hierarchy.`
+- Update: Applied a final editorial polish pass to the Google Doc version of the PRD. Centered and strengthened the title, tightened the top metadata block, styled the working note as lighter supporting copy, increased spacing rhythm between major and minor sections, recolored and emphasized main section headers, and cleaned up label-style lead-ins so the document reads more like a structured PM artifact than a raw imported draft. Verified the resulting alignment, spacing, and text styling through the Docs API.
+- Files: `context.md`
+
+### 2026-04-08 EDT
+
+- Prompt: `in the AI Reflection part also Talk about the long tail problem...`
+- Update: Expanded the AI Reflection in the Assignment 6 draft to explicitly describe the long-tail problem in this project. Added language explaining that AI was strong at generating the app skeleton and broad structure, but much weaker at handling more complex or novel scenarios such as AR navigation, parking-to-ticket handoffs, micro-interactions, and the finer-grained parts of the user journey. The revision also clarifies that high-finesse polish required very specific prompting, repeated iteration, and human judgment rather than one-pass AI output.
+- Files: `final_assignment/Assignment6_First_Draft.md`, `context.md`

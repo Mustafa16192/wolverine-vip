@@ -536,19 +536,21 @@ function MorningContent({ user, game, kickoffCountdown }) {
           <Navigation size={18} color={COLORS.textSecondary} />
           <Text style={phaseStyles.infoBlockTitle}>DEPARTURE READINESS</Text>
         </View>
-        <View style={phaseStyles.routeSummary}>
-          <View style={phaseStyles.routeSummaryItem}>
-            <Text style={phaseStyles.routeSummaryLabel}>LOT</Text>
-            <Text style={phaseStyles.routeSummaryValue}>{user.parking.lot}</Text>
+        <View style={phaseStyles.routeSummaryRow}>
+          <View style={phaseStyles.routeSummaryCard}>
+            <Text style={phaseStyles.routeSummaryCardLabel}>LOT</Text>
+            <Text style={phaseStyles.routeSummaryCardValue}>{user.parking.lot}</Text>
           </View>
-          <View style={phaseStyles.routeSummaryItem}>
-            <Text style={phaseStyles.routeSummaryLabel}>DRIVE</Text>
-            <Text style={phaseStyles.routeSummaryValue}>{ROUTE_BRIEF.eta}</Text>
+          <View style={phaseStyles.routeSummaryCard}>
+            <Text style={phaseStyles.routeSummaryCardLabel}>DRIVE</Text>
+            <Text style={phaseStyles.routeSummaryCardValue}>{ROUTE_BRIEF.eta}</Text>
           </View>
         </View>
-        <Text style={phaseStyles.subtitleText}>{MORNING_CONDITIONS.routeCue}</Text>
-        <Text style={phaseStyles.locationMetaText}>Spot {user.parking.spot} is reserved and ready for lot handoff.</Text>
-        <Text style={phaseStyles.locationMetaText}>Kickoff: {game?.time || '12:00 PM'} at Michigan Stadium.</Text>
+        <View style={phaseStyles.routeCueContainer}>
+          <Text style={phaseStyles.subtitleText}>{MORNING_CONDITIONS.routeCue}</Text>
+          <Text style={phaseStyles.locationMetaText}>Spot {user.parking.spot} is reserved and ready for lot handoff.</Text>
+          <Text style={phaseStyles.locationMetaText}>Kickoff: {game?.time || '12:00 PM'} at Michigan Stadium.</Text>
+        </View>
       </View>
     </View>
   );
@@ -1990,10 +1992,33 @@ const phaseStyles = StyleSheet.create({
     fontFamily: 'AtkinsonHyperlegible_400Regular',
     marginTop: SPACING.xxs,
   },
-  routeSummary: {
+  routeSummaryRow: {
     flexDirection: 'row',
-    gap: SPACING.s,
+    gap: SPACING.m,
     marginBottom: SPACING.m,
+  },
+  routeSummaryCard: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: RADIUS.lg,
+    padding: SPACING.m,
+  },
+  routeSummaryCardLabel: {
+    color: COLORS.textTertiary,
+    fontSize: 10,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  routeSummaryCardValue: {
+    color: COLORS.text,
+    fontSize: TYPOGRAPHY.fontSize.base,
+    fontFamily: 'Montserrat_700Bold',
+  },
+  routeCueContainer: {
+    marginTop: SPACING.xs,
   },
   routeSummaryItem: {
     flex: 1,
