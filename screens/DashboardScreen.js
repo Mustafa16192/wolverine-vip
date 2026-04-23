@@ -643,6 +643,18 @@ export default function DashboardScreen({ navigation }) {
                 ? `Up next: ${seasonData.upcoming.opponent} on ${formatGameDate(seasonData.upcoming.kickoff)}`
                 : 'Regular season complete.'}
             </Text>
+
+            <TouchableOpacity
+              style={styles.progressActionRow}
+              activeOpacity={0.9}
+              onPress={() => navigation.navigate('SeasonSchedule')}
+            >
+              <View style={styles.progressActionCopy}>
+                <Text style={styles.progressActionEyebrow}>SEASON PLANNING</Text>
+                <Text style={styles.progressActionText}>View full schedule</Text>
+              </View>
+              <Calendar size={16} color={COLORS.maize} />
+            </TouchableOpacity>
           </View>
 
           <View style={styles.legacyCard}>
@@ -1044,6 +1056,31 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.fontSize.sm,
     lineHeight: 17,
     fontFamily: 'AtkinsonHyperlegible_400Regular',
+  },
+  progressActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: SPACING.s,
+    marginTop: SPACING.m,
+    paddingTop: SPACING.m,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  progressActionCopy: {
+    flex: 1,
+  },
+  progressActionEyebrow: {
+    color: COLORS.textTertiary,
+    fontSize: TYPOGRAPHY.fontSize.xs,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 1,
+    marginBottom: 2,
+  },
+  progressActionText: {
+    color: COLORS.text,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    fontFamily: 'Montserrat_600SemiBold',
   },
 
   sectionTitle: {

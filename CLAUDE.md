@@ -25,7 +25,7 @@ npx expo start --web          # Web browser
 
 ### Navigation (App.js)
 
-5-tab bottom navigator (Home, Stats, Ticket, News, Shop) with a Home stack containing the dashboard, game day phases, and detail screens. Tab bar is a floating pill with blur backdrop.
+5-tab bottom navigator (Home, Stats, Ticket, News, Shop) with a Home stack containing the dashboard, season planning, game day phases, and detail screens. Tab bar is a floating pill with blur backdrop.
 
 Additional screens in the Home stack not part of the main flow: `LauncherScreen`, `RenewalScreen`, `WidgetScreen`, `ARParkingAssistScreen`, `ARWalkToGateScreen`.
 

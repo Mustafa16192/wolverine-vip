@@ -35,6 +35,7 @@ import StatsScreen from './screens/StatsScreen';
 import NewsScreen from './screens/NewsScreen';
 import ShopScreen from './screens/ShopScreen';
 import LiveOpsDetailScreen from './screens/LiveOpsDetailScreen';
+import SeasonScheduleScreen from './screens/SeasonScheduleScreen';
 
 // Shared Screens
 import TicketScreen from './screens/TicketScreen';
@@ -112,6 +113,7 @@ function HomeNavigator() {
       }}
     >
       <HomeStack.Screen name="Dashboard" component={DashboardScreen} />
+      <HomeStack.Screen name="SeasonSchedule" component={SeasonScheduleScreen} />
       <HomeStack.Screen name="LiveOpsDetail" component={LiveOpsDetailScreen} />
       <HomeStack.Screen name="GameDayHome" component={GameDayHomeScreen} />
       <HomeStack.Screen name="MorningPhase" component={MorningPhase} />
